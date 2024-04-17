@@ -2,6 +2,7 @@ from data.node import Node
 from data.link import Link
 from pydantic import BaseModel
 
+
 class Infrastructure(BaseModel):
     nodes: dict[str, Node] = {}
     links: list[Link] = []

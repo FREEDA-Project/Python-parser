@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 from pydantic import BaseModel
 
 from data.property import Property
@@ -24,6 +24,6 @@ class Component(BaseModel):
         )
 
     def add_flavour_requirement(self, flavour, req_name, req_value, req_soft=False):
-        self.component_requirements[req_name] = FlavourRequirement(
-            name=req_name, value=req_value, soft=req_soft
-        )
+        flav = FlavourRequirement(name=req_name, value=req_value, soft=req_soft)
+        flav.setFlavourSpecific(flavour, req_name)
+        self.component_requirements[req_name] = flav
