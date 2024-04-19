@@ -1,3 +1,4 @@
+from typing import Any
 from pydantic import BaseModel
 from data.application import Application
 from data.components import Component
@@ -5,11 +6,10 @@ import itertools
 
 class IntermediateLanguage(BaseModel):
     comps: set[str]
-    flavs: set[str]
     nodes: set[str]
     flav: dict[str,set[str]]
     uses: dict[str,dict[str,set[str]]]
-
+    comReq: dict[str,dict[set,dict[str,Any]]]
 
 
 class IntermaediateLanguageBuilder():
