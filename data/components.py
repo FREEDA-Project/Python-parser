@@ -2,7 +2,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from data.property import Property
-from data.requirement import ComponentRequirement, FlavourRequirement
+from data.requirement import Requirement, FlavourRequirement
 
 ComponentType = Literal["service", "database", "integration"]
 
@@ -12,18 +12,20 @@ class Component(BaseModel):
     name: str
     type: str
     must: bool = False
-    component_requirements: dict[str, ComponentRequirement | FlavourRequirement] = {}
+    requirements: dict[str, Requirement|FlavourRequirement] = {}
     flavours: dict[str, str] = {}
 
     def add_flavour(self, flavour, uses):
         self.flavours[flavour] = uses
 
-    def add_component_requirement(self, name: str, value: Property, soft=False):
-        self.component_requirements[name] = ComponentRequirement(
-            name=name, value=value, soft=soft
+    def add_component_requirement(self, req_name: str, value: Property, soft=False):
+        self.requirements[req_name] = Requirement(
+            name=req_name, value=value, soft=soft
         )
 
-    def add_flavour_requirement(self, flavour, req_name, req_value, req_soft=False):
-        flav = FlavourRequirement(name=req_name, value=req_value, soft=req_soft)
-        flav.setFlavourSpecific(flavour, req_name)
-        self.component_requirements[req_name] = flav
+    def add_flavour_requirement(
+        self, flavour: str, req_name, req_value, req_soft=False
+    ):
+        self.requirements[req_name] = FlavourRequirement(
+            name=req_name, value=req_value, soft=req_soft, flavour=flavour
+        )

@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 class Dependency(BaseModel):
     source: str
-    flavour: str
     target: str
     requirements: dict[str, Requirement] = {}
 

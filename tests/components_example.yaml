@@ -20,16 +20,16 @@ components:
       large:
         uses:  [ db1 ] 
       medium:
-        uses:   [ db1 ] 
+        uses:  [ db1 ] 
       tiny:
         uses:  [ ] 
   be2:
     type: service
     flavours:
       medium:
-        uses: [ db1 ] 
-      tiny:
         uses:  [ db1 ] 
+      tiny:
+        uses: [ db1 ] 
   db1:
     type: database
     must: true
