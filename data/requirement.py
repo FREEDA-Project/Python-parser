@@ -6,3 +6,6 @@ class Requirement(BaseModel):
     name: str
     value: Property
     soft: bool
+
+class FlavourRequirement(Requirement):
+    flavour:str
