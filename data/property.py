@@ -1,2 +1,1 @@
-
-Property = str|int|float|list[str]
+Property = str | int | float | list[str]

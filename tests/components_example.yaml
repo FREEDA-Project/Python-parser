@@ -5,37 +5,37 @@ components:
     must: true
     flavours:
       large:
-        uses: { uses: [ be1 ] }
+        uses:  [ be1 ] 
       medium:
-        uses: { uses: [ be1 ] }
+        uses:  [ be1 ] 
   fe2:
     type: service
     flavours:
       large:
-        uses: { uses: [ be2 ] }
+        uses:  [ be2 ] 
   be1:
     type: service
     must: true
     flavours:
       large:
-        uses: { uses: [ db1 ] }
+        uses:  [ db1 ] 
       medium:
-        uses: { uses: [ db1 ] }
+        uses:  [ db1 ] 
       tiny:
-        uses: { uses: [ ] }
+        uses:  [ ] 
   be2:
     type: service
     flavours:
       medium:
-        uses: { uses: [ db1 ] }
+        uses:  [ db1 ] 
       tiny:
-        uses: { uses: [ db1 ] }
+        uses: [ db1 ] 
   db1:
     type: database
     must: true
     flavours:
       large:
-        uses: { uses: [ ] }
+        uses:  [ ] 
 requirements:
   components:
     fe1:
