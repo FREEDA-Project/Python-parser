@@ -119,5 +119,5 @@ if __name__ == "__main__":
         data = yaml.safe_load(yaml_file)
         infrastructure = load_infrastructure(data)
         print(infrastructure.model_dump_json())
-    builder = IntermaediateLanguageBuilder(app)
+    builder = IntermaediateLanguageBuilder(app,infrastructure)
     print(builder.build()) 

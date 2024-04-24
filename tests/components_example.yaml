@@ -129,10 +129,6 @@ requirements:
             value: 2
     db1:
       common:
-        cpu:
-          value: 1
-        ram:
-          value: 8
         storage:
           value: 512
         bwIn:

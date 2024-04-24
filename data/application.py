@@ -8,7 +8,7 @@ class Application(BaseModel):
     name: str
     components: dict[str, Component] = {}
     dependencies: dict[str, dict[str, Dependency]] = {}
-    budget: dict[str, Budget] = {}
+    budget: Budget
 
     def add_component(self, name: str, component_type: ComponentType, must=False):
         self.components[name] = Component(name=name, type=component_type, must=must)
