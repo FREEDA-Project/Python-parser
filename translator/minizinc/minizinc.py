@@ -23,6 +23,26 @@ class MiniZinc(Translator):
         self._node_cap()
         self._node_cost()
         self._dependency_requirement()
+        self._imp()
+        self._cons()
+
+    def _cons(self):
+        self.output += "cons = array2d(Nodes0, Res, [\n"
+        self._commented_res()
+        for i in self.res:
+            self.output += "0,"
+        self.output += "\n"
+
+        for node_name in self.intermediate_language.nodes:
+            for i in self.res:
+                if i == "cpu":
+                    self.output += str(self.intermediate_language.cost[node_name][
+                        "carbon"
+                    ])
+                else:
+                    self.output += "0,"
+            self.output += "% " + node_name + "\n"
+        self.output += "]);\n"
 
     def _add_res(self):
         output = "CRes = {"
@@ -59,6 +79,7 @@ class MiniZinc(Translator):
         for val in self.intermediate_language.flav.values():
             set_flav = set_flav.union(val)
         self.output += ",".join(set_flav)
+        self.flav = set_flav
         self.output += "};\n"
 
     def _add_flav(self):
@@ -216,6 +237,25 @@ class MiniZinc(Translator):
         self.output += "endif | ni in Nodes0, nj in Nodes0, r in Res\n"
         self.output += "]);\n"
 
+    def _imp(self):
+        self.output += "imp = array2d(Comp, Flavs, [\n"
+        for comp in self.intermediate_language.comps:
+            for flav in self.flav:
+                if flav == "tiny":
+                    self.output += "1,"
+                elif flav == "medium":
+                    self.output += "2,"
+                elif flav == "large":
+                    self.output += "3,"
+                else:
+                    self.output += "0,"
+            self.output += "% " + comp + "\n"
+        self.output += "]);\n"
+
+    def _cons_cost_weight(self):
+        self.output += "costWeight = 0;\n"
+        self.output += "consWeight = 1;\n"
+
     def _dependency_requirement(self):
         self.output += "depReq = array3d(Comp, Comp, Res,[\n"
         first = True
@@ -254,33 +294,3 @@ class MiniZinc(Translator):
 
     def to_file_string(self) -> str:
         return self.output
-
-
-"""
- 
- mustComps = {frontend};
- 
- MAX_BOUND = 1000000;
- % No value for r can be worse than worstBounds(r).
- worstBounds = [0, 0, 0, 0, 0, 0, 0, 0, 0, MAX_BOUND];
- % No value for r can be better than bestBounds(r).
- bestBounds = [MAX_BOUND - i | i in worstBounds];
- 
- comReq = array2d(CompFlavs, Res, [
- % CPU, 10*RAM, storage, bwIn, bwOut,  ssl, fwall, encr, 100*avail, latency for:
-   1,  5, 0, 1000, 1000, 1, 1, 0, 98, MAX_BOUND, % frontend,medium (not soft)
-   2, 10, 0, 1000, 1000, 1, 1, 0, 98, MAX_BOUND, % frontend,large (no soft)
-   1, 20, 0, 1000,  600, 1, 0, 0, 98, MAX_BOUND, % backend,tiny
-   2, 40, 0, 1000,  600, 1, 0, 0, 98, MAX_BOUND, % backend,medium
-   4, 80, 0, 1000,  600, 1, 0, 0, 98, MAX_BOUND, % backend,large
-   1, 80, 512, 200, 200, 1, 0, 1, 99, MAX_BOUND, % database,large
- ]);
- 
- nodeCap = array2d(Nodes0, Res,
- % CPU, 10*RAM, storage, bwIn, bwOut,  ssl, fwall, encr, 100*avail, latency
-   [bestBounds[r] | r in Res] ++ [ % No node
-   2,    80,  128, 100,   200, 1, 1, 1, 80, 0, % n1
-   4,   320,  512, 100,   200, 1, 0, 1, 80, 0, % n2
-   32, 5120, 1024, 3000, 3000, 1, 1, 1, 99, 0] % n3
- ); 
-"""
