@@ -97,27 +97,6 @@ def load_application(data: dict[str, Any]) -> Application:
     return app
 
 
-def _diaplay_app(app: Application):
-    # Print information to check
-    for component_name, component in app.components.items():
-        print(f"{component_name}: Type: {component.type}, Must: {component.must}")
-        for flavour, uses in component.flavours.items():
-            print(f"{flavour}: {uses}")
-        print("Component requirements: (common)")
-        for req_name, req_data in component.component_requirements.items():
-            if req_data.general:
-                print(
-                    f"{req_name}: {req_data.value}, soft: {req_data.soft}, general requirement: {req_data.general}"
-                )
-        print("Component requirements: (Flavour-specific)")
-        for req_name, req_data in component.component_requirements.items():
-            if not (req_data.general):
-                print(
-                    f"{req_name}: {req_data.value}, soft: {req_data.soft}, general requirement: {req_data.general}"
-                )
-    return app
-
-
 if __name__ == "__main__":
     with open("tests/components_example.yaml", "r") as yaml_file:
         data = yaml.safe_load(yaml_file)

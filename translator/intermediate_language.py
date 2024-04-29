@@ -99,10 +99,12 @@ class IntermediateLanguageBuilder:
     def _extract_cost(self):
         cost = {}
         for name, node in self.infrastructure.nodes.items():
-            if name not in cost:
-                cost[name] = {}
-            for _, cap in node.capabilities.items():
-                self._extract_proprieties_capability(cost[name], cap)
+            cost[name] = {
+                "cpu": node.profile.cost_cpu,
+                "ram": node.profile.cost_ram,
+                "storage": node.profile.cost_storage,
+                "carbon": node.profile.carbon,
+            }
         return cost
 
     def _extract_node_cap(self):
