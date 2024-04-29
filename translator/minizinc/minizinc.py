@@ -222,22 +222,35 @@ class MiniZinc(Translator):
         for from_comp in self.intermediate_language.depReq:
             for to_comp in self.intermediate_language.depReq[from_comp]:
                 if first:
-                    first=False
+                    first = False
                 else:
                     self.output += "else"
-                self.output +="if ci = " + from_comp + " \\/ cj = " + to_comp + " then\n"
-                for i,res_name in enumerate(self.intermediate_language.depReq[from_comp][to_comp]):
-                    self.output+='\t'
+                self.output += (
+                    "if ci = " + from_comp + " \\/ cj = " + to_comp + " then\n"
+                )
+                for i, res_name in enumerate(
+                    self.intermediate_language.depReq[from_comp][to_comp]
+                ):
+                    self.output += "\t"
                     if i != 0:
                         self.output += "else"
-                    self.output += "if r = N(" + res_name + ") then " + str(self.intermediate_language.depReq[from_comp][to_comp][res_name]) + "\n"
-                self.output += "\t else worstBounds[r]\n" 
+                    self.output += (
+                        "if r = N("
+                        + res_name
+                        + ") then "
+                        + str(
+                            self.intermediate_language.depReq[from_comp][to_comp][
+                                res_name
+                            ]
+                        )
+                        + "\n"
+                    )
+                self.output += "\t else worstBounds[r]\n"
                 self.output += "\n"
         self.output += "else\n"
         self.output += "\tworstBounds[r]\n"
         self.output += "endif | ci in Comp, cj in Comp, r in Res\n"
         self.output += "]);\n"
-
 
     def to_file_string(self) -> str:
         return self.output

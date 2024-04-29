@@ -20,7 +20,9 @@ def _load_components(data: dict[str, Any], app: Application):
 
 def _load_requirements(data: dict[str, Any], app: Application):
     # adding requirements to each component
-    for component_name, reqs_component_data in data["requirements"]["components"].items():
+    for component_name, reqs_component_data in data["requirements"][
+        "components"
+    ].items():
         # adding general requirements
         for req_name, req_data in reqs_component_data["common"].items():
             req_value = req_data.get("value")
@@ -29,7 +31,9 @@ def _load_requirements(data: dict[str, Any], app: Application):
                 req_name, req_value, req_soft
             )
         # adding flavour specific requirements
-        for flavour_name, flavour_data in reqs_component_data["flavour-specific"].items():
+        for flavour_name, flavour_data in reqs_component_data[
+            "flavour-specific"
+        ].items():
             for req_name, req_data in flavour_data.items():
                 req_value = req_data.get("value")
                 req_soft = req_data.get("soft", False)
@@ -70,7 +74,9 @@ def load_infrastructure(data: dict[str, Any]) -> Infrastructure:
             cost_storage=cost_storage,
             carbon=carbon,
         )
-        for capability_name, capability_value in data["nodes"][node_name]["capabilities"].items():
+        for capability_name, capability_value in data["nodes"][node_name][
+            "capabilities"
+        ].items():
             infrastructure.nodes[node_name].add_capability(
                 capability_name, capability_value
             )
@@ -121,8 +127,8 @@ if __name__ == "__main__":
         data = yaml.safe_load(yaml_file)
         infrastructure = load_infrastructure(data)
         pprint(infrastructure.model_dump_json())
-    builder = IntermediateLanguageBuilder(app,infrastructure)
+    builder = IntermediateLanguageBuilder(app, infrastructure)
     interediate_language = builder.build()
-    pprint(interediate_language.model_dump_json()) 
+    pprint(interediate_language.model_dump_json())
     minizinc = MiniZinc(intermediate_language=interediate_language)
     print(minizinc.to_file_string())

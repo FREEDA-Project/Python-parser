@@ -18,12 +18,11 @@ class IntermediateLanguage(BaseModel):
     uses: dict[str, dict[str, set[str]]]
     comReq: dict[str, dict[str, dict[str, Any]]]
     depReq: dict[str, dict[str, dict[str, Any]]]
-    budget_cost:float
-    budget_carbon:float
-    nodeCap:dict[str, dict[str, Any]]
-    cost:dict[str, dict[str, Any]]
-    linkCap:dict[str,dict[str, dict[str, Any]]]
-
+    budget_cost: float
+    budget_carbon: float
+    nodeCap: dict[str, dict[str, Any]]
+    cost: dict[str, dict[str, Any]]
+    linkCap: dict[str, dict[str, dict[str, Any]]]
 
 
 class IntermediateLanguageBuilder:
@@ -51,14 +50,14 @@ class IntermediateLanguageBuilder:
             nodes=self.nodes,
             flav=self.flav,
             uses=self.uses,
-            budget_carbon= self.app.budget.carbon,
+            budget_carbon=self.app.budget.carbon,
             budget_cost=self.app.budget.cost,
             cost=self.cost,
             comReq=self.comReq,
             depReq=self.depReq,
             linkCap=self.linkCap,
             nodeCap=self.nodeCap,
-            res=self.res
+            res=self.res,
         )
 
     def _extract_res(self):
@@ -74,61 +73,56 @@ class IntermediateLanguageBuilder:
         for node in self.nodeCap.values():
             for val in node.keys():
                 res.add(val)
-        
+
         for node in self.linkCap.values():
             for val in node.values():
                 for prop in val.keys():
                     res.add(prop)
-        
+
         return res
 
-    def _extract_proprieties_capability(self,map,prop:Capability|Requirement):
-        if isinstance(prop.value,list) and prop.name == "security":
+    def _extract_proprieties_capability(self, map, prop: Capability | Requirement):
+        if isinstance(prop.value, list) and prop.name == "security":
             for flav in prop.value:
                 map[flav] = 1
-        elif isinstance(prop.value,str) and prop.name == "latency":
-            map[prop.name] = float('inf')
-        elif isinstance(prop.value,str) and prop.name == "avail":
-            map[prop.name] = prop.value*100
-        elif isinstance(prop.value,str):
+        elif isinstance(prop.value, str) and prop.name == "latency":
+            map[prop.name] = float("inf")
+        elif isinstance(prop.value, str) and prop.name == "avail":
+            map[prop.name] = prop.value * 100
+        elif isinstance(prop.value, str):
             map[prop.name] = prop.value
-        elif isinstance(prop.value,float) or isinstance(prop.value,int):
+        elif isinstance(prop.value, float) or isinstance(prop.value, int):
             map[prop.name] = prop.value
         else:
             print("Error in the propieties_capability", prop)
-        
-
 
     def _extract_cost(self):
         cost = {}
-        for name,node in self.infrastructure.nodes.items():
+        for name, node in self.infrastructure.nodes.items():
             if name not in cost:
                 cost[name] = {}
-            for _,cap in node.capabilities.items():
-                self._extract_proprieties_capability(cost[name],cap)
+            for _, cap in node.capabilities.items():
+                self._extract_proprieties_capability(cost[name], cap)
         return cost
 
-
-    
     def _extract_node_cap(self):
         nodeCap = {}
-        for node_name,node in self.infrastructure.nodes.items():
+        for node_name, node in self.infrastructure.nodes.items():
             nodeCap[node_name] = {}
-            for _,cap in node.capabilities.items():
-                self._extract_proprieties_capability(nodeCap[node_name],cap)
+            for _, cap in node.capabilities.items():
+                self._extract_proprieties_capability(nodeCap[node_name], cap)
         return nodeCap
 
     def _extract_link_cap(self):
         linkCap = {}
         for link in self.infrastructure.links:
-            source,target = link.pair
+            source, target = link.pair
             if source not in linkCap:
                 linkCap[source] = {}
             linkCap[source][target] = {}
-            for _,cap in link.capabilities.items():
-                self._extract_proprieties_capability(linkCap[source][target],cap)
+            for _, cap in link.capabilities.items():
+                self._extract_proprieties_capability(linkCap[source][target], cap)
         return linkCap
-        
 
     def _extract_nodes(self) -> set[str]:
         return set(self.infrastructure.nodes.keys())
@@ -150,7 +144,7 @@ class IntermediateLanguageBuilder:
         for comp in self.comps:
             flav[comp] = set(self.app.components[comp].flavours.keys())
         return flav
-    
+
     def _extract_dependency_requirements(self) -> dict[str, dict[str, dict[str, Any]]]:
         depReq = {}
         for source, deps in self.app.dependencies.items():
@@ -158,7 +152,7 @@ class IntermediateLanguageBuilder:
             for target, dep in deps.items():
                 depReq[source][target] = {}
                 for req in dep.requirements.values():
-                    self._extract_proprieties_capability(depReq[source][target],req)
+                    self._extract_proprieties_capability(depReq[source][target], req)
         return depReq
 
     def _extract_component_requirements(self):
@@ -170,16 +164,18 @@ class IntermediateLanguageBuilder:
             for flav, req in zip(flavours, requirements):
                 if flav not in comReq[component]:
                     comReq[component][flav] = {}
-                self._extract_proprieties_capability(comReq[component][flav],req)
+                self._extract_proprieties_capability(comReq[component][flav], req)
 
         for component in self.app.components.values():
             if len(component.requirements) > 0:
                 comReq[component.name] = {}
 
-            for req,req_data in component.requirements.items():
-                if isinstance(req_data,list):
+            for req, req_data in component.requirements.items():
+                if isinstance(req_data, list):
                     _set_requirement(
-                        component.name, [flavReq.flavour for flavReq in req_data], req_data
+                        component.name,
+                        [flavReq.flavour for flavReq in req_data],
+                        req_data,
                     )
                 else:
                     _set_requirement(
