@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from translator.intermidiate_language import IntermediateLanguage
+from translator.intermediate_language import IntermediateLanguage
 
 class Translator(ABC):
 

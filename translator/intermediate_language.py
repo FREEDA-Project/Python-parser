@@ -16,7 +16,7 @@ class IntermediateLanguage(BaseModel):
     res: set[str]
     flav: dict[str, set[str]]
     uses: dict[str, dict[str, set[str]]]
-    comReq: dict[str, dict[set, dict[str, Any]]]
+    comReq: dict[str, dict[str, dict[str, Any]]]
     depReq: dict[str, dict[str, dict[str, Any]]]
     budget_cost:float
     budget_carbon:float
@@ -26,7 +26,7 @@ class IntermediateLanguage(BaseModel):
 
 
 
-class IntermaediateLanguageBuilder:
+class IntermediateLanguageBuilder:
     def __init__(self, app: Application, infrastructure: Infrastructure) -> None:
         self.app = app
         self.infrastructure = infrastructure
@@ -83,7 +83,7 @@ class IntermaediateLanguageBuilder:
         return res
 
     def _extract_proprieties_capability(self,map,prop:Capability|Requirement):
-        if isinstance(prop.value,list[str]) and prop.name == "security":
+        if isinstance(prop.value,list) and prop.name == "security":
             for flav in prop.value:
                 map[flav] = 1
         elif isinstance(prop.value,str) and prop.name == "latency":
@@ -91,6 +91,8 @@ class IntermaediateLanguageBuilder:
         elif isinstance(prop.value,str) and prop.name == "avail":
             map[prop.name] = prop.value*100
         elif isinstance(prop.value,str):
+            map[prop.name] = prop.value
+        elif isinstance(prop.value,float) or isinstance(prop.value,int):
             map[prop.name] = prop.value
         else:
             print("Error in the propieties_capability", prop)
@@ -104,6 +106,7 @@ class IntermaediateLanguageBuilder:
                 cost[name] = {}
             for _,cap in node.capabilities.items():
                 self._extract_proprieties_capability(cost[name],cap)
+        return cost
 
 
     
@@ -112,17 +115,18 @@ class IntermaediateLanguageBuilder:
         for node_name,node in self.infrastructure.nodes.items():
             nodeCap[node_name] = {}
             for _,cap in node.capabilities.items():
-                self._extract_proprieties_capability(node[node_name],cap)
+                self._extract_proprieties_capability(nodeCap[node_name],cap)
         return nodeCap
 
     def _extract_link_cap(self):
         linkCap = {}
         for link in self.infrastructure.links:
-            if link.source not in linkCap:
-                linkCap[link.source] = {}
-            linkCap[link.source][link.target] = {}
+            source,target = link.pair
+            if source not in linkCap:
+                linkCap[source] = {}
+            linkCap[source][target] = {}
             for _,cap in link.capabilities.items():
-                self._extract_proprieties_capability(linkCap[link.source][link.target],cap)
+                self._extract_proprieties_capability(linkCap[source][target],cap)
         return linkCap
         
 

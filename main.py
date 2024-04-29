@@ -3,7 +3,9 @@ import os
 from typing import Any
 from data.application import Application
 from data.infrastructure import Infrastructure
-from intermidiate_language import IntermaediateLanguageBuilder
+from translator.intermediate_language import IntermediateLanguageBuilder
+from translator.minizinc.minizinc import MiniZinc
+from pprint import pprint
 
 
 def _load_components(data: dict[str, Any], app: Application):
@@ -114,10 +116,13 @@ if __name__ == "__main__":
     with open("tests/components_example.yaml", "r") as yaml_file:
         data = yaml.safe_load(yaml_file)
         app = load_application(data)
-        print(app.model_dump_json())
+        pprint(app.model_dump_json())
     with open("tests/infrastructure_example.yaml") as yaml_file:
         data = yaml.safe_load(yaml_file)
         infrastructure = load_infrastructure(data)
-        print(infrastructure.model_dump_json())
-    builder = IntermaediateLanguageBuilder(app,infrastructure)
-    print(builder.build()) 
+        pprint(infrastructure.model_dump_json())
+    builder = IntermediateLanguageBuilder(app,infrastructure)
+    interediate_language = builder.build()
+    pprint(interediate_language.model_dump_json()) 
+    minizinc = MiniZinc(intermediate_language=interediate_language)
+    print(minizinc.to_file_string())

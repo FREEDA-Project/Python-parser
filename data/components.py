@@ -26,9 +26,6 @@ class Component(BaseModel):
     ):
         if req_name not in self.requirements:
             self.requirements[req_name] = []
-        else:
-            print(req_name)
-            print(self.name)
         self.requirements[req_name].append(
             FlavourRequirement(
                 name=req_name, value=req_value, soft=req_soft, flavour=flavour
