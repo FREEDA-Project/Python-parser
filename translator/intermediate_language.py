@@ -1,13 +1,25 @@
 from typing import Any
 from pydantic import BaseModel
 from data.application import Application
-from data.components import Component
 import itertools
 
 from data.infrastructure import Infrastructure
-from data.requirement import FlavourRequirement, Requirement
+from data.requirement import Requirement
 from data.capability import Capability
 from data.requirement import Requirement
+from translator.get_source_nodes import get_roots
+
+
+# struttura del progetto
+# trattare le scelte prese
+# constraint programming
+# descrivere l'ottimizzazione del grafo
+# 
+
+# introduzione
+# background
+# ``
+
 
 
 class IntermediateLanguage(BaseModel):
@@ -24,6 +36,18 @@ class IntermediateLanguage(BaseModel):
     cost: dict[str, dict[str, Any]]
     linkCap: dict[str, dict[str, dict[str, Any]]]
 
+    @property
+    def mustComp(self) -> set[str]:
+        #split uses by falvor
+        flavs= set(itertools.chain.from_iterable(self.uses.values()))
+        res = [ ]
+        for flav in flavs:
+            graph = {comp: self.uses[comp][flav] for comp in self.uses}
+            res.append(get_roots(graph))
+        
+        # get the roots with less components
+        return min(res, key=len)
+            
 
 class IntermediateLanguageBuilder:
     def __init__(self, app: Application, infrastructure: Infrastructure) -> None:

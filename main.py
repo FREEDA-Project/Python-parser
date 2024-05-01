@@ -1,11 +1,12 @@
 import yaml
-import os
+import json
 from typing import Any
 from data.application import Application
 from data.infrastructure import Infrastructure
-from translator.intermediate_language import IntermediateLanguageBuilder
+from translator.intermediate_language import IntermediateLanguageBuilder ,IntermediateLanguage
 from translator.minizinc.minizinc import MiniZinc
 from pprint import pprint
+import argparse
 
 
 def _load_components(data: dict[str, Any], app: Application):
@@ -97,17 +98,59 @@ def load_application(data: dict[str, Any]) -> Application:
     return app
 
 
+
 if __name__ == "__main__":
-    with open("tests/components_example.yaml", "r") as yaml_file:
-        data = yaml.safe_load(yaml_file)
-        app = load_application(data)
-        pprint(app.model_dump_json())
-    with open("tests/infrastructure_example.yaml") as yaml_file:
-        data = yaml.safe_load(yaml_file)
-        infrastructure = load_infrastructure(data)
-        pprint(infrastructure.model_dump_json())
-    builder = IntermediateLanguageBuilder(app, infrastructure)
-    interediate_language = builder.build()
-    pprint(interediate_language.model_dump_json())
-    minizinc = MiniZinc(intermediate_language=interediate_language)
-    print(minizinc.to_file_string())
+    parser = argparse.ArgumentParser(description='Process some files.')
+    parser.add_argument('components', type=str, help='Components file')
+    parser.add_argument('infrastructure', type=str, help='Infrastructure file')
+    parser.add_argument('--output-format', '-f',choices=['intermediate', 'minizinc'], default='intermediate', help='Output format')
+    parser.add_argument('--intermediate_file', type=str, help='Intermediate language file')
+    parser.add_argument('--output', '-o',type=str, help='file di output')
+    # parser -k --key
+
+    args = parser.parse_args()
+
+    if args.intermediate_file:
+        with open(args.intermediate_file, "r") as file:
+            data = json.loads(file.read())
+            intermediate_language = IntermediateLanguage(*data)
+    else:
+        with open(args.components, "r") as yaml_file:
+            data = yaml.safe_load(yaml_file)
+            app = load_application(data)
+
+        with open(args.infrastructure, "r") as yaml_file:
+            data = yaml.safe_load(yaml_file)
+            infrastructure = load_infrastructure(data)
+
+        builder = IntermediateLanguageBuilder(app, infrastructure)
+        intermediate_language = builder.build()
+
+    output = ""
+    if args.output_format == 'intermediate':
+        output = (intermediate_language.model_dump_json())
+    elif args.output_format == 'minizinc':
+        minizinc = MiniZinc(intermediate_language=intermediate_language)
+        output = (minizinc.to_file_string())
+
+    if args.output:
+        with open(args.output, "w") as file:
+            file.write(output)
+    else:
+        print(output)
+
+# if __name__ == "__main__":
+#     with open("test_assets/components_example.yaml", "r") as yaml_file:
+#         data = yaml.safe_load(yaml_file)
+#         app = load_application(data)
+#         pprint(app.model_dump_json())
+#     with open("test_assets/infrastructure_example.yaml") as yaml_file:
+#         data = yaml.safe_load(yaml_file)
+#         infrastructure = load_infrastructure(data)
+#         pprint(infrastructure.model_dump_json())
+#     builder = IntermediateLanguageBuilder(app, infrastructure)
+#     interediate_language = builder.build()
+#     pprint(interediate_language.model_dump_json())
+#     minizinc = MiniZinc(intermediate_language=interediate_language)
+#     print(minizinc.to_file_string())
+# 
