@@ -4,10 +4,9 @@ from translator.intermediate_language import IntermediateLanguage
 
 class Translator(ABC):
 
-    @classmethod
-    @abstractmethod
-    def from_intermediate_language(cls, intermediate_language:IntermediateLanguage  ) -> "Translator":
-        pass
+
+    def __init__(self, intermediate_language:IntermediateLanguage) -> None:
+        self.intermediate_language = intermediate_language
 
 
     @abstractmethod
