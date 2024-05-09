@@ -32,6 +32,8 @@ def _load_requirements(data: dict[str, Any], app: Application):
                 req_name, req_value, req_soft
             )
         # adding flavour specific requirements
+        if "flavour-specific" not in reqs_component_data:
+            continue
         for flavour_name, flavour_data in reqs_component_data[
             "flavour-specific"
         ].items():
@@ -138,19 +140,3 @@ if __name__ == "__main__":
             file.write(output)
     else:
         print(output)
-
-# if __name__ == "__main__":
-#     with open("test_assets/components_example.yaml", "r") as yaml_file:
-#         data = yaml.safe_load(yaml_file)
-#         app = load_application(data)
-#         pprint(app.model_dump_json())
-#     with open("test_assets/infrastructure_example.yaml") as yaml_file:
-#         data = yaml.safe_load(yaml_file)
-#         infrastructure = load_infrastructure(data)
-#         pprint(infrastructure.model_dump_json())
-#     builder = IntermediateLanguageBuilder(app, infrastructure)
-#     interediate_language = builder.build()
-#     pprint(interediate_language.model_dump_json())
-#     minizinc = MiniZinc(intermediate_language=interediate_language)
-#     print(minizinc.to_file_string())
-# 

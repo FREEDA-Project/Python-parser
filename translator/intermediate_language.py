@@ -10,18 +10,6 @@ from data.requirement import Requirement
 from translator.get_source_nodes import get_roots
 
 
-# struttura del progetto
-# trattare le scelte prese
-# constraint programming
-# descrivere l'ottimizzazione del grafo
-# 
-
-# introduzione
-# background
-# ``
-
-
-
 class IntermediateLanguage(BaseModel):
     comps: set[str]
     nodes: set[str]

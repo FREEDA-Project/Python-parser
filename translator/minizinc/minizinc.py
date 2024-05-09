@@ -1,10 +1,9 @@
-from typing import Any
+from typing import Any, Optional
 from translator.intermediate_language import IntermediateLanguage
 from translator.translator import Translator
 
 
 
-# mettere aposto negli if la letterea dell'enum
 
 
 
@@ -100,17 +99,22 @@ class MiniZinc(Translator):
     def _add_flav(self):
         self.output += "Flav = ["
         for key in self.intermediate_language.comps:
-            self.output += "{" + ",".join(self.intermediate_language.flav[key]) + "},"
+            flav = []
+            for val in self.flav:
+                if val in  self.intermediate_language.flav[key]  :
+                    flav.append(val)
+            self.output += "{" + ",".join(flav) + "},"
         self.output += "];\n"
 
     def _add_uses(self):
         self.output += "Uses = ["
         uses = []
         for key in self.intermediate_language.comps:
-            for  val in self.intermediate_language.flav[key]:
-                uses.append("{" + ",".join(
-                    self.intermediate_language.uses[key][val]
-                ) + "}")
+            for val in self.flav:
+                if val in self.intermediate_language.flav[key]   :
+                    uses.append("{" + ",".join(
+                        self.intermediate_language.uses[key][val]
+                    ) + "}")
         self.output += ",".join(uses)
         self.output += "];\n"
 
@@ -120,21 +124,24 @@ class MiniZinc(Translator):
     def _add_formatted_res(self, key:str,val) -> str:
             if key == "avail" or key == "availability":
                 val = val * 100
+            #elif key.lower() == 'ram':
+            #    val = val * 10
+            
             if val == float("inf"):
                 self.output += "MAX_BOUND"
             elif isinstance(val, float):
                 self.output += str(int(val))
             else:
                 self.output += str(val) 
-    
 
-    def _add_all_resurces(self, prop: Any) -> str:
-        prop = {k.lower(): v for k, v in prop.items()}
+
+
+    def _add_all_resources(self, prop: Any,latency_max=False) -> str:
         for key in self.res:
             if key in prop:
                 self._add_formatted_res(key,prop[key])
             else:
-                self.output += 'MAX_BOUND' if key=='latency' else "0"
+                self.output += 'MAX_BOUND' if key=='latency' and latency_max else "0"
             self.output += ","
 
 
@@ -142,18 +149,18 @@ class MiniZinc(Translator):
         self.output += "comReq = array2d(CompFlavs, Res, [\n"
         self._commented_res()
         for component_name in self.intermediate_language.comps:
-            for flav_name in self.intermediate_language.flav[component_name]:
-                if (
-                    flav_name not in self.intermediate_language.comReq[component_name]
-                    or component_name not in self.intermediate_language.comReq
-                ):
-                    self.output += ",".join(self._worst_bounds()) + ","
-                else:
-                    comp_val = self.intermediate_language.comReq[component_name]
-                    flav_val = comp_val[flav_name]
-                    self._add_all_resurces(flav_val)
-                self.output += "% " + component_name + "," + flav_name
-                self.output += "\n"
+            for flav_name in self.flav:
+                if flav_name in self.intermediate_language.flav[component_name]:
+                    if (
+                        flav_name not in self.intermediate_language.comReq[component_name]
+                        or component_name not in self.intermediate_language.comReq
+                    ):
+                        self.output += ",".join(self._worst_bounds()) + ","
+                    else:
+                        flav_val = self.intermediate_language.comReq[component_name][flav_name]
+                        self._add_all_resources(flav_val,True)
+                    self.output += "% " + component_name + "," + flav_name
+                    self.output += "\n"
         self.output += "]);\n"
 
     @classmethod
@@ -194,7 +201,7 @@ class MiniZinc(Translator):
         self.output += "[\n"
         for node_name in self.intermediate_language.nodes:
             node_val = self.intermediate_language.nodeCap[node_name]
-            self._add_all_resurces(node_val)
+            self._add_all_resources(node_val)
             self.output += "% " + node_name + "\n"
 
         self.output += "],\n"
@@ -215,8 +222,8 @@ class MiniZinc(Translator):
         self.output += "]);\n"
 
     def _budget(self):
-        self.output += "costBudget =" + str(int(self.intermediate_language.budget_carbon)) + ";\n"
-        self.output += "consBudget =" + str(int(self.intermediate_language.budget_cost)) + ";\n"
+        self.output += "costBudget =" + str(int(self.intermediate_language.budget_cost)) + ";\n"
+        self.output += "consBudget =" + str(int(self.intermediate_language.budget_carbon)) + ";\n"
 
     def _link_cap(self):
         self.output += "linkCap = array3d(Nodes0, Nodes0, Res,[\n"
