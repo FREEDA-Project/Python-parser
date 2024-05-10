@@ -17,7 +17,6 @@ class SMTTranslator(Translator):
         D, N = self.add_variables()
         constraints = self.add_constraints(D, N)
 
-        fun = self._max_fun(D)
         return constraints.to_smtlib()
 
     def _transform_requirements(self, name, value):
@@ -113,7 +112,7 @@ class SMTTranslator(Translator):
                                         val <= linkCapVal
                                     )
                                 )
-        return constraints
+        return And(constraints)
         
         
     def _max_fun(self,D):
