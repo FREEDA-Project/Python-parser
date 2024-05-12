@@ -24,6 +24,17 @@ class IntermediateLanguage(BaseModel):
     cost: dict[str, dict[str, Any]]
     linkCap: dict[str, dict[str, dict[str, Any]]]
 
+
+    def flav_to_importance(flav):
+        if flav == "tiny":
+            return 1
+        elif flav == "medium": 
+            return 2
+        elif flav == "large":
+            return 3
+        else:
+            return 0
+
     @property
     def mustComp(self) -> set[str]:
         #split uses by falvor
@@ -35,6 +46,10 @@ class IntermediateLanguage(BaseModel):
         
         # get the roots with less components
         return min(res, key=len)
+    
+    @property
+    def cres(self, res):
+        return   ["cpu", "ram", "storage", "bwin", "bwout"]
             
 
 class IntermediateLanguageBuilder:

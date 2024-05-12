@@ -40,13 +40,13 @@ requirements:
             value: 2
             soft: true
           ram:
-            value: 10
+            value: 1
         medium:
           cpu:
             value: 1
             soft: true
           ram:
-            value: 5
+            value: 0.5
     backend:
       common:
         bwIn:
@@ -64,19 +64,19 @@ requirements:
             value: 4
             soft: true
           ram:
-            value: 80
+            value: 8
         medium:
           cpu:
             value: 2
             soft: true
           ram:
-            value: 40
+            value: 4
         tiny:
           cpu:
             value: 1
             soft: true
           ram:
-            value: 20
+            value: 2
     database:
       common:
         bwIn:
@@ -90,7 +90,7 @@ requirements:
           value: 1
           soft: true
         ram:
-          value: 80
+          value: 8
           soft: true
         storage:
           value: 512

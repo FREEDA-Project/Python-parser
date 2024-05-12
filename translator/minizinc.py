@@ -4,11 +4,10 @@ from translator.translator import Translator
 
 
 class MiniZinc(Translator):
-    cres = ["cpu", "ram", "storage", "bwin", "bwout"]
 
     def __init__(self, intermediate_language: IntermediateLanguage):
         self.output = ""
-        self.intermediate_language = intermediate_language
+        self.intermediate = intermediate_language
 
         self._add_component()
         self._must_components()
@@ -31,7 +30,7 @@ class MiniZinc(Translator):
 
     def _must_components(self):
         self.output += "mustComps = {"
-        self.output += ",".join(self.intermediate_language.mustComp)
+        self.output += ",".join(self.intermediate.mustComp)
         self.output += "};\n"
 
     def _cons(self):
@@ -41,11 +40,11 @@ class MiniZinc(Translator):
             self.output += "0,"
         self.output += "\n"
 
-        for node_name in self.intermediate_language.nodes:
+        for node_name in self.intermediate.nodes:
             for i in self.res:
                 if i == "cpu":
                     self.output += str(
-                        int(self.intermediate_language.cost[node_name]["carbon"])
+                        int(self.intermediate.cost[node_name]["carbon"])
                     )
                 else:
                     self.output += "0"
@@ -56,15 +55,15 @@ class MiniZinc(Translator):
     def _add_res(self):
         self.output += "CRes = {"
         cres = []
-        for i in self.intermediate_language.res:
-            if i.lower() in self.cres:
+        for i in self.intermediate.res:
+            if i.lower() in self.intermediate.cres:
                 cres.append(i)
         self.output += ", ".join(cres)
         self.output += "};\n"
 
         self.output += "NRes = {"
         nres = []
-        for i in self.intermediate_language.res:
+        for i in self.intermediate.res:
             if i.lower() not in self.cres:
                 nres.append(i)
         self.output += ", ".join(nres)
@@ -74,18 +73,18 @@ class MiniZinc(Translator):
 
     def _add_component(self):
         self.output += "Comps = {"
-        self.output += ",".join(self.intermediate_language.comps)
+        self.output += ",".join(self.intermediate.comps)
         self.output += "};\n"
 
     def _add_nodes(self):
         self.output += "Nodes = {"
-        self.output += ",".join(self.intermediate_language.nodes)
+        self.output += ",".join(self.intermediate.nodes)
         self.output += "};\n"
 
     def _add_flavs(self):
         self.output += "Flavs = {"
         set_flav = set()
-        for val in self.intermediate_language.flav.values():
+        for val in self.intermediate.flav.values():
             set_flav = set_flav.union(val)
         self.output += ",".join(set_flav)
         self.flav = set_flav
@@ -93,10 +92,10 @@ class MiniZinc(Translator):
 
     def _add_flav(self):
         self.output += "Flav = ["
-        for key in self.intermediate_language.comps:
+        for key in self.intermediate.comps:
             flav = []
             for val in self.flav:
-                if val in self.intermediate_language.flav[key]:
+                if val in self.intermediate.flav[key]:
                     flav.append(val)
             self.output += "{" + ",".join(flav) + "},"
         self.output += "];\n"
@@ -104,11 +103,11 @@ class MiniZinc(Translator):
     def _add_uses(self):
         self.output += "Uses = ["
         uses = []
-        for key in self.intermediate_language.comps:
+        for key in self.intermediate.comps:
             for val in self.flav:
-                if val in self.intermediate_language.flav[key]:
+                if val in self.intermediate.flav[key]:
                     uses.append(
-                        "{" + ",".join(self.intermediate_language.uses[key][val]) + "}"
+                        "{" + ",".join(self.intermediate.uses[key][val]) + "}"
                     )
         self.output += ",".join(uses)
         self.output += "];\n"
@@ -119,8 +118,8 @@ class MiniZinc(Translator):
     def _add_formatted_res(self, key: str, val) -> str:
         if key == "avail" or key == "availability":
             val = val * 100
-        # elif key.lower() == 'ram':
-        #    val = val * 10
+        elif key.lower() == 'ram':
+           val = val * 10
 
         if val == float("inf"):
             self.output += "MAX_BOUND"
@@ -140,17 +139,17 @@ class MiniZinc(Translator):
     def _add_com_req(self):
         self.output += "comReq = array2d(CompFlavs, Res, [\n"
         self._commented_res()
-        for component_name in self.intermediate_language.comps:
+        for component_name in self.intermediate.comps:
             for flav_name in self.flav:
-                if flav_name in self.intermediate_language.flav[component_name]:
+                if flav_name in self.intermediate.flav[component_name]:
                     if (
                         flav_name
-                        not in self.intermediate_language.comReq[component_name]
-                        or component_name not in self.intermediate_language.comReq
+                        not in self.intermediate.comReq[component_name]
+                        or component_name not in self.intermediate.comReq
                     ):
                         self.output += ",".join(self._worst_bounds()) + ","
                     else:
-                        flav_val = self.intermediate_language.comReq[component_name][
+                        flav_val = self.intermediate.comReq[component_name][
                             flav_name
                         ]
                         self._add_all_resources(flav_val, True)
@@ -188,8 +187,8 @@ class MiniZinc(Translator):
         self._commented_res()
         self.output += "[ bestBounds[r] | r in Res] ++ "
         self.output += "[\n"
-        for node_name in self.intermediate_language.nodes:
-            node_val = self.intermediate_language.nodeCap[node_name]
+        for node_name in self.intermediate.nodes:
+            node_val = self.intermediate.nodeCap[node_name]
             self._add_all_resources(node_val)
             self.output += "% " + node_name + "\n"
 
@@ -200,11 +199,11 @@ class MiniZinc(Translator):
         self.output += "cost = array2d(Nodes0, Res,[\n"
         self._commented_res()
         self.output += "".join(["0," for i in self.res]) + " % n0\n"
-        for node_name in self.intermediate_language.nodes:
+        for node_name in self.intermediate.nodes:
             for res in self.res:
-                if res in self.intermediate_language.cost[node_name]:
+                if res in self.intermediate.cost[node_name]:
                     self._add_formatted_res(
-                        res, self.intermediate_language.cost[node_name][res]
+                        res, self.intermediate.cost[node_name][res]
                     )
                 else:
                     self.output += "0"
@@ -214,10 +213,10 @@ class MiniZinc(Translator):
 
     def _budget(self):
         self.output += (
-            "costBudget =" + str(int(self.intermediate_language.budget_cost)) + ";\n"
+            "costBudget =" + str(int(self.intermediate.budget_cost)) + ";\n"
         )
         self.output += (
-            "consBudget =" + str(int(self.intermediate_language.budget_carbon)) + ";\n"
+            "consBudget =" + str(int(self.intermediate.budget_carbon)) + ";\n"
         )
 
     def _link_cap(self):
@@ -229,12 +228,12 @@ class MiniZinc(Translator):
         self.output += "\telseif r = N(latency) then 0\n"
         self.output += "\telse worstBounds[r]\n"
         self.output += "endif\n"
-        for node_name in self.intermediate_language.linkCap:
-            for node_name2 in self.intermediate_language.linkCap[node_name]:
+        for node_name in self.intermediate.linkCap:
+            for node_name2 in self.intermediate.linkCap[node_name]:
                 self.output += (
                     "elseif ni = " + node_name + " \\/ nj = " + node_name2 + " then\n"
                 )
-                capabilities = self.intermediate_language.linkCap[node_name][node_name2]
+                capabilities = self.intermediate.linkCap[node_name][node_name2]
                 if len(capabilities) != 0:
                     for i, cap in enumerate(capabilities):
                         self.output += "\t"
@@ -254,16 +253,9 @@ class MiniZinc(Translator):
 
     def _imp(self):
         self.output += "imp = array2d(Comps, Flavs, [\n"
-        for comp in self.intermediate_language.comps:
+        for comp in self.intermediate.comps:
             for flav in self.flav:
-                if flav == "tiny":
-                    self.output += "1,"
-                elif flav == "medium":
-                    self.output += "2,"
-                elif flav == "large":
-                    self.output += "3,"
-                else:
-                    self.output += "0,"
+                self.output+= str(self.intermediate.flav_to_importance(flav))+','
             self.output += "% " + comp + "\n"
         self.output += "]);\n"
 
@@ -274,8 +266,8 @@ class MiniZinc(Translator):
     def _dependency_requirement(self):
         self.output += "depReq = array3d(Comps, Comps, Res,[\n"
         first = True
-        for from_comp in self.intermediate_language.depReq:
-            for to_comp in self.intermediate_language.depReq[from_comp]:
+        for from_comp in self.intermediate.depReq:
+            for to_comp in self.intermediate.depReq[from_comp]:
                 if first:
                     first = False
                 else:
@@ -284,7 +276,7 @@ class MiniZinc(Translator):
                     "if ci = " + from_comp + " \\/ cj = " + to_comp + " then\n"
                 )
                 for i, res_name in enumerate(
-                    self.intermediate_language.depReq[from_comp][to_comp]
+                    self.intermediate.depReq[from_comp][to_comp]
                 ):
                     self.output += "\t"
                     if i != 0:
@@ -292,7 +284,7 @@ class MiniZinc(Translator):
                     self.output += "if r = N(" + res_name + ") then "
                     self._add_formatted_res(
                         res_name,
-                        self.intermediate_language.depReq[from_comp][to_comp][res_name],
+                        self.intermediate.depReq[from_comp][to_comp][res_name],
                     )
                     self.output += "\n"
                 self.output += "\t else worstBounds[r]\n"

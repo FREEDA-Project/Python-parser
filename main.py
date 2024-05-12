@@ -4,10 +4,12 @@ from typing import Any
 from data.application import Application
 from data.infrastructure import Infrastructure
 from translator.intermediate_language import IntermediateLanguageBuilder ,IntermediateLanguage
+from translator.translator import Translator
 from translator.minizinc import MiniZinc
 from pprint import pprint
 import argparse
 
+from translator.pulp import PulpTranslator
 from translator.smt import SMTTranslator
 
 
@@ -107,7 +109,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some files.')
     parser.add_argument('components', type=str, help='Components file')
     parser.add_argument('infrastructure', type=str, help='Infrastructure file')
-    parser.add_argument('--output-format', '-f',choices=['intermediate', 'minizinc','smt'], default='intermediate', help='Output format')
+    parser.add_argument('--output-format', '-f',choices=[ 'minizinc','smt','plup'], default='plup', help='Output format')
     parser.add_argument('--intermediate_file', type=str, help='Intermediate language file')
     parser.add_argument('--output', '-o',type=str, help='file di output')
     # parser -k --key
@@ -131,17 +133,17 @@ if __name__ == "__main__":
         intermediate_language = builder.build()
 
     output = ""
-    if args.output_format == 'intermediate':
-        output = (intermediate_language.model_dump_json())
-    elif args.output_format == 'minizinc':
-        minizinc = MiniZinc(intermediate_language=intermediate_language)
-        output = (minizinc.to_file_string())
+    translator:Translator = None
+    if args.output_format == 'minizinc':
+        translator = MiniZinc(intermediate_language=intermediate_language)
     elif args.output_format == 'smt':
-        sat = SMTTranslator(intermediate_language=intermediate_language)
-        output = (sat.to_file_string())
+        translator = SMTTranslator(intermediate_language=intermediate_language)
+    elif args.output_format == 'plup':
+        translator = PulpTranslator(intermediate_language=intermediate_language)
+    else:
+        raise Exception("Invalid output format")
 
     if args.output:
-        with open(args.output, "w") as file:
-            file.write(output)
+        translator.write_to_file(args.output)
     else:
-        print(output)
+        print(translator.to_file_string())
