@@ -2,6 +2,7 @@ from pulp import LpProblem, LpVariable, LpMaximize, LpMinimize, LpStatus,lpSum,P
 from translator.intermediate_language import IntermediateLanguage
 from translator.translator import Translator
 import subprocess
+from config import DEBUG
 
 
 class PulpTranslator(Translator):
@@ -12,15 +13,15 @@ class PulpTranslator(Translator):
     
 
     def _gen_problem(self) -> LpProblem:
-        solver = LpProblem("Solver", LpMaximize)
-        D, N = self.add_variables(solver)
-        self.add_constraints(D, N, solver)
+        self.solver = LpProblem("Solver", LpMaximize)
+        D = self.add_variables(self.solver)
+        self.generate_constraints(D )
         result = subprocess.run("which cbc", shell=True, capture_output=True, text=True)
         if result.returncode != 0:
             raise Exception("CBC is not installed")
 
         cplex_solver = PULP_CBC_CMD( result.stdout.strip)
-        return solver
+        return self.solver
 
     def to_file_string(self) -> str:
         import json
@@ -32,41 +33,50 @@ class PulpTranslator(Translator):
 
 
     def _transform_requirements(self, name, value):
-        if value == float("inf"):
-            return PulpTranslator.MAX_BOUND
-        return int(value)
+        return value
     
 
-    def add_constraints(self, D, N, solver):
-        # N must be equal to LpSum of flav and nodes of d moltiplied by a constant j
-        for component in self.intermediate.comps:
-            solver += lpSum([D[(component, flav, node)]*j 
-                             for flav in self.intermediate.flav[component]
-                             for j,node in enumerate(self.intermediate.nodes)
-                             ]) ==  N[component]
+    def add_constraint(self,constraint):
+        if DEBUG:
+            print(constraint)
+        if isinstance(constraint, list):
+            for c in constraint:
+                self.solver+= c
+        else:
+            self.solver += constraint
 
-        # 1.2
-        for component in self.intermediate.comps:
-            for flav in self.intermediate.flav[component]:
-                for node in self.intermediate.nodes:
-                    solver += D[(component, flav, node)] <= 1
+
+    def generate_constraints(self, D ):
+        # N must be equal to LpSum of flav and nodes of d moltiplied by a constant j
+        #for component in self.intermediate.comps:
+        #    self.add_constraint(lpSum([D[(component, flav, node)]*(j+1) 
+        #                     for flav in self.intermediate.flav[component]
+        #                     for j,node in enumerate(self.intermediate.nodes)
+        #                     ]) ==  N[component])
 
         # 1.3
+        for component in self.intermediate.comps:
+            self.add_constraint(lpSum([D[(component, flav, node)]
+                for flav in self.intermediate.flav[component]
+                for node in self.intermediate.nodes]) <= 1)
+        # 1.3
+        print('-- must component')
         for must in self.intermediate.mustComp:
-            solver += N[must] >= 1
-            solver += (
+            #self.add_constraint(N[must] >= 1) # questo può essere tolto
+            self.add_constraint(
                 lpSum(
                     D[(must, f, n)]
                     for f in self.intermediate.flav[must]
                     for n in self.intermediate.nodes
                 )
                 == 1 
-            ) # TODO: isn't this redundant?
+            ) 
                 
+        print(" --- deploy used components ")
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for use in self.intermediate.uses[component][flav]:
-                    solver += (
+                    self.add_constraint(
                         lpSum(
                             D[(component, flav, node)]
                             for node in self.intermediate.nodes
@@ -78,58 +88,82 @@ class PulpTranslator(Translator):
                         )
                     )
         # 1.3.1 
+        print(" --- component requirements")
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for req,val in self.intermediate.comReq[component][flav].items():
-                    def get_node_cap(node,req):
-                        if req in self.intermediate.nodeCap[node]:
-                            return self._transform_requirements(req,self.intermediate.nodeCap[node][req])
-                        else:
-                            print('not set for node',node,req)
-                            return PulpTranslator.MAX_BOUND 
 
+                    nodes_with_cap = set(filter(lambda x:x is not  None,
+                            list(node if req in self.intermediate.nodeCap[node] else None
+                            for node in self.intermediate.nodes)
+                    ))
+                    # qua imponiamo solo sui nodi che hanno definito la proprietà
 
-                    solver += lpSum(
-                        [
+                    self.add_constraint(lpSum(
+                    
                             self._transform_requirements(req, val) * D[(component, flav, node)]
-                            for node in self.intermediate.nodes
-                        ]
+                            for node in nodes_with_cap
                     )<= lpSum(
-                            D[(component, flav, node)]* get_node_cap(node,req)
-                            for node in self.intermediate.nodes
-                    )
+                            D[(component, flav, node)]* 
+                            self._transform_requirements(req,self.intermediate.nodeCap[node][req])
+                            for node in nodes_with_cap
+                    ))
         
-        return solver
+        # 1.3.1
+        print(" --- comulative requirements")
 
-        def check_com_res(res) :
-            return res in self.intermediate.cres
-        
         for node in self.intermediate.nodes:
-            for req,val in self.intermediate.nodeCap[node].items():
-                solver += lpSum(
-                    self._transform_requirements(req,self.intermediate.comReq[component][flav][req])*D[(component,flav,node)]
-                    for component in self.intermediate.comps
-                    for flav in self.intermediate.flav[component]
-                ) <= self._transform_requirements(req,self.intermediate.nodeCap[node][req])
+            for req, val in self.intermediate.nodeCap[node].items():
+                if req not in self.intermediate.res:
+                    continue
+                component_requirements = []
+                for component in self.intermediate.comps:
+                    for flav in self.intermediate.flav[component]:
+                        if req not in self.intermediate.comReq[component][flav]:
+                            continue
+                        cr = self._transform_requirements(req, self.intermediate.comReq[component][flav][req])
+                        component_requirements.append( cr* D[(component, flav, node)])
+                val = self._transform_requirements(req, val)
+                self.add_constraint(lpSum(component_requirements) <= val)
+
         
+        #for node in self.intermediate.nodes:
+        #    for req,val in self.intermediate.nodeCap[node].items():
+        #        solver += lpSum(
+        #            self._transform_requirements(req,self.intermediate.comReq[component][flav][req])*D[(component,flav,node)]
+        #            for component in self.intermediate.comps
+        #            for flav in self.intermediate.flav[component]
+        #        ) <= self._transform_requirements(req,self.intermediate.nodeCap[node][req])
+
+        # 1.3.2
+
+
+        print(" --- link requirements")
         K={}
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for uses in self.intermediate.uses[component][flav]:
                     for uses_flav in self.intermediate.flav[uses]:
-                        for req,val in self.intermediate.depReq[component][uses]: # qui è importante l'ordine
+                        for req,val in self.intermediate.depReq[component][uses].items(): # qui è importante l'ordine
                             all=[]
                             for i,node1 in enumerate(self.intermediate.nodes):
                                 for j,node2 in enumerate(self.intermediate.nodes):
-                                    if i <= j :
-                                        klen = len(K)
-                                        K[klen] = LpVariable(f"N_{klen}", 0, 1, cat="Binary")
-                                        all.append(self.intermediate.linkCap[node1][node2][req]*K[klen])
-                                        solver+=K[klen]<=D[(component,flav,node1)]
-                                        solver+=K[klen]<=D[(uses,uses_flav,node2)]
-                                        solver+= K[klen] >= D[(component,flav,node1)] + D[(uses,uses_flav,node2)] -1
+                                    if i>=j:
+                                        continue
+                                    link_cap = self.intermediate.get_link_cap(node1,node2)
+                                    if link_cap is None or req not in link_cap:
+                                        continue
 
-                            solver+= self.intermediate.depReq[component][uses][req]<= lpSum(all)
+                                    val_link = self._transform_requirements(req,link_cap[req])
+                                    klen = len(K)
+                                    K[klen] = LpVariable(f"K_{klen}", 0, 1, cat="Binary")
+                                    all.append(val_link*K[klen])
+                                    solver+= K[klen]<=D[(component,flav,node1)]
+                                    solver+= K[klen]<=D[(uses,uses_flav,node2)]
+                                    solver+= K[klen] >= D[(component,flav,node1)] + D[(uses,uses_flav,node2)] -1
+
+                            val = self._transform_requirements(req,val)
+                            solver+= val <= lpSum(all)
                             
         
         for component in self.intermediate.comps:
@@ -156,7 +190,7 @@ class PulpTranslator(Translator):
 
     def add_variables(self,solver):
         D = {}
-        N = {}
+        #N = {}
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for node in self.intermediate.nodes:
@@ -164,7 +198,7 @@ class PulpTranslator(Translator):
                         f"D_{component}_{flav}_{node}", 0, 1, cat="Binary"
                     )
 
-        for component in self.intermediate.comps:
-            N[component] = LpVariable(f"N_{component}", 0, 1, cat="Binary")
+        #for component in self.intermediate.comps:
+        #    N[component] = LpVariable(f"N_{component}", 0, 1, cat="Binary")
 
-        return D, N
+        return D

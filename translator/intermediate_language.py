@@ -1,5 +1,5 @@
 from typing import Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from data.application import Application
 import itertools
 
@@ -24,11 +24,10 @@ class IntermediateLanguage(BaseModel):
     cost: dict[str, dict[str, Any]]
     linkCap: dict[str, dict[str, dict[str, Any]]]
 
-
-    def flav_to_importance(flav):
+    def flav_to_importance(self, flav):
         if flav == "tiny":
             return 1
-        elif flav == "medium": 
+        elif flav == "medium":
             return 2
         elif flav == "large":
             return 3
@@ -37,20 +36,35 @@ class IntermediateLanguage(BaseModel):
 
     @property
     def mustComp(self) -> set[str]:
-        #split uses by falvor
-        flavs= set(itertools.chain.from_iterable(self.uses.values()))
-        res = [ ]
+        # split uses by falvor
+        flavs = set(itertools.chain.from_iterable(self.uses.values()))
+        res = []
         for flav in flavs:
             graph = {comp: self.uses[comp][flav] for comp in self.uses}
             res.append(get_roots(graph))
-        
+
         # get the roots with less components
         return min(res, key=len)
-    
-    @property
-    def cres(self, res):
-        return   ["cpu", "ram", "storage", "bwin", "bwout"]
-            
+
+    @classmethod
+    def CRES_LIST():
+        return ["cpu", "ram", "storage", "bwin", "bwout"]
+
+    @classmethod
+    def NRES_LIST():
+        return ["latency", "avability", "ssl", "firewall", "encrypted_storage"]
+
+    @classmethod
+    def RES_LIST():
+        return IntermediateLanguage.cres() + IntermediateLanguage.nres()
+
+    def get_link_cap(self, node1, node2):
+        if node1 in self.linkCap and node2 in self.linkCap[node1]:
+            return self.linkCap[node1][node2]
+        elif node2 in self.linkCap and node1 in self.linkCap[node2]:
+            return self.linkCap[node2][node1]
+        return None
+
 
 class IntermediateLanguageBuilder:
     def __init__(self, app: Application, infrastructure: Infrastructure) -> None:
@@ -112,16 +126,13 @@ class IntermediateLanguageBuilder:
         if isinstance(prop.value, list) and prop.name == "security":
             for flav in prop.value:
                 map[flav] = 1
-        elif isinstance(prop.value, str) and prop.name == "latency":
-            map[prop.name] = float("inf")
-        elif isinstance(prop.value, str) and prop.name == "avail":
-            map[prop.name] = prop.value * 100
-        elif isinstance(prop.value, str):
-            map[prop.name] = prop.value
-        elif isinstance(prop.value, float) or isinstance(prop.value, int):
+        elif isinstance(prop.value, int) or prop.value in IntermediateLanguage.RES_LIST():
             map[prop.name] = prop.value
         else:
-            print("Error in the propieties_capability", prop)
+            raise ValidationError(
+                "Error in the propieties_capability, value must be a float and one of ",
+                str(IntermediateLanguage.RES_LIST()) + "but was given" + prop,
+            )
 
     def _extract_cost(self):
         cost = {}

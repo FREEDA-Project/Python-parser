@@ -56,7 +56,7 @@ class MiniZinc(Translator):
         self.output += "CRes = {"
         cres = []
         for i in self.intermediate.res:
-            if i.lower() in self.intermediate.cres:
+            if i.lower() in IntermediateLanguage.CRES_LIST():
                 cres.append(i)
         self.output += ", ".join(cres)
         self.output += "};\n"
@@ -64,7 +64,7 @@ class MiniZinc(Translator):
         self.output += "NRes = {"
         nres = []
         for i in self.intermediate.res:
-            if i.lower() not in self.cres:
+            if i.lower() not in cres:
                 nres.append(i)
         self.output += ", ".join(nres)
         self.output += "};\n"
@@ -116,17 +116,7 @@ class MiniZinc(Translator):
         self.output += "MAX_BOUND = 1000000;\n"
 
     def _add_formatted_res(self, key: str, val) -> str:
-        if key == "avail" or key == "availability":
-            val = val * 100
-        elif key.lower() == 'ram':
-           val = val * 10
-
-        if val == float("inf"):
-            self.output += "MAX_BOUND"
-        elif isinstance(val, float):
-            self.output += str(int(val))
-        else:
-            self.output += str(val)
+        self.output += str(val)
 
     def _add_all_resources(self, prop: Any, latency_max=False) -> str:
         for key in self.res:

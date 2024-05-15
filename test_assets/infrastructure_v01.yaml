@@ -3,7 +3,7 @@ nodes:
   n1:
     capabilities:
       cpu: 2
-      ram: 8
+      ram: 80
       storage: 128
       bwIn: 100
       bwOut: 200
@@ -16,30 +16,30 @@ nodes:
     capabilities:
       cpu: 4
       ram: 32
-      storage: 512
+      storage: 5120
       bwIn: 100
       bwOut: 200
-      availability: 0.8
+      availability: 8
       security: [ssl, encrypted_storage]
     profile:
-      cost: { cpu: 50, ram: 0.5, storage: 1 }
+      cost: { cpu: 50, ram: 5, storage: 1 }
       carbon: 35
   n3:
     capabilities:
       cpu: 32
-      ram: 512
+      ram: 5120
       storage: 1024
       bwIn: 3000
       bwOut: 3000
-      availability: 0.99
+      availability: 99
       security: [ssl, firewall, encrypted_storage]
     profile:
-      cost: { cpu: 150, ram: 2.5, storage: 10 }
+      cost: { cpu: 150, ram: 25, storage: 10 }
       carbon: 25
 links:
   - connected_nodes: [ n1, n2 ]
-    capabilities: { latency: 10, availability: 0.99 }
+    capabilities: { latency: 10, availability: 99 }
   - connected_nodes: [ n2, n3 ]
-    capabilities: { latency: 20, availability: 0.98 }
+    capabilities: { latency: 20, availability: 98 }
   - connected_nodes: [ n1, n3 ]
-    capabilities: { latency: 15, availability: 0.96 }
+    capabilities: { latency: 15, availability: 96 }

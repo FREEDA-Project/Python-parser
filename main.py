@@ -11,6 +11,7 @@ import argparse
 
 from translator.pulp import PulpTranslator
 from translator.smt import SMTTranslator
+from translator.z3 import Z3Translator
 
 
 def _load_components(data: dict[str, Any], app: Application):
@@ -109,7 +110,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some files.')
     parser.add_argument('components', type=str, help='Components file')
     parser.add_argument('infrastructure', type=str, help='Infrastructure file')
-    parser.add_argument('--output-format', '-f',choices=[ 'minizinc','smt','plup'], default='plup', help='Output format')
+    parser.add_argument('--output-format', '-f',choices=[ 'minizinc','smt','plup','z3'], default='plup', help='Output format')
     parser.add_argument('--intermediate_file', type=str, help='Intermediate language file')
     parser.add_argument('--output', '-o',type=str, help='file di output')
     # parser -k --key
@@ -140,6 +141,8 @@ if __name__ == "__main__":
         translator = SMTTranslator(intermediate_language=intermediate_language)
     elif args.output_format == 'plup':
         translator = PulpTranslator(intermediate_language=intermediate_language)
+    elif args.output_format == 'z3':
+        translator = Z3Translator(intermediate_language=intermediate_language)
     else:
         raise Exception("Invalid output format")
 

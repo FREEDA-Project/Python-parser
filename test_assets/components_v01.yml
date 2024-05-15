@@ -30,7 +30,7 @@ requirements:
         bwOut:
           value: 1000
         availability:
-          value: 0.98
+          value: 98
           soft: true
         security:
           value: [ssl, firewall]
@@ -40,13 +40,13 @@ requirements:
             value: 2
             soft: true
           ram:
-            value: 1
+            value: 10
         medium:
           cpu:
             value: 1
             soft: true
           ram:
-            value: 0.5
+            value: 5
     backend:
       common:
         bwIn:
@@ -54,7 +54,7 @@ requirements:
         bwOut:
           value: 600
         availability:
-          value: 0.98
+          value: 98
           soft: true
         security:
           value: [ssl]
@@ -64,19 +64,19 @@ requirements:
             value: 4
             soft: true
           ram:
-            value: 8
+            value: 80
         medium:
           cpu:
             value: 2
             soft: true
           ram:
-            value: 4
+            value: 40
         tiny:
           cpu:
             value: 1
             soft: true
           ram:
-            value: 2
+            value: 20
     database:
       common:
         bwIn:
@@ -84,13 +84,13 @@ requirements:
         bwOut:
           value: 200
         availability:
-          value: 0.99
+          value: 99
           soft: true
         cpu:
           value: 1
           soft: true
         ram:
-          value: 8
+          value: 80
           soft: true
         storage:
           value: 512
@@ -107,7 +107,7 @@ requirements:
         latency:
           value: 50
         availability:
-          value: 0.98
+          value: 98
   budget:
     cost: 50000
     carbon: 500
