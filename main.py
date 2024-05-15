@@ -3,10 +3,10 @@ import json
 from typing import Any
 from data.application import Application
 from data.infrastructure import Infrastructure
-from translator.intermediate_language import IntermediateLanguageBuilder ,IntermediateLanguage
+from translator.intermediate_language import IntermediateLanguage
+from translator.intermediate_language_builder import IntermediateLanguageBuilder
 from translator.translator import Translator
 from translator.minizinc import MiniZinc
-from pprint import pprint
 import argparse
 
 from translator.pulp import PulpTranslator
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some files.')
     parser.add_argument('components', type=str, help='Components file')
     parser.add_argument('infrastructure', type=str, help='Infrastructure file')
-    parser.add_argument('--output-format', '-f',choices=[ 'minizinc','smt','plup','z3'], default='plup', help='Output format')
+    parser.add_argument('--output-format', '-f',choices=[ 'minizinc','smt','pulp','z3'], default='pulp', help='Output format')
     parser.add_argument('--intermediate_file', type=str, help='Intermediate language file')
     parser.add_argument('--output', '-o',type=str, help='file di output')
     # parser -k --key
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         translator = MiniZinc(intermediate_language=intermediate_language)
     elif args.output_format == 'smt':
         translator = SMTTranslator(intermediate_language=intermediate_language)
-    elif args.output_format == 'plup':
+    elif args.output_format == 'pulp':
         translator = PulpTranslator(intermediate_language=intermediate_language)
     elif args.output_format == 'z3':
         translator = Z3Translator(intermediate_language=intermediate_language)

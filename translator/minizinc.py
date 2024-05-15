@@ -8,6 +8,8 @@ class MiniZinc(Translator):
     def __init__(self, intermediate_language: IntermediateLanguage):
         self.output = ""
         self.intermediate = intermediate_language
+        self.intermediate.res = ['cpu', 'ram', 'storage', 'bwIn', 'bwOut',  'ssl', 'firewall', 'encrypted_storage', 'availability', 'latency']
+        
 
         self._add_component()
         self._must_components()
@@ -56,7 +58,7 @@ class MiniZinc(Translator):
         self.output += "CRes = {"
         cres = []
         for i in self.intermediate.res:
-            if i.lower() in IntermediateLanguage.CRES_LIST():
+            if i in IntermediateLanguage.CRES_LIST():
                 cres.append(i)
         self.output += ", ".join(cres)
         self.output += "};\n"
@@ -64,7 +66,7 @@ class MiniZinc(Translator):
         self.output += "NRes = {"
         nres = []
         for i in self.intermediate.res:
-            if i.lower() not in cres:
+            if i not in cres:
                 nres.append(i)
         self.output += ", ".join(nres)
         self.output += "};\n"
@@ -123,7 +125,7 @@ class MiniZinc(Translator):
             if key in prop:
                 self._add_formatted_res(key, prop[key])
             else:
-                self.output += "MAX_BOUND" if key == "latency" and latency_max else "0"
+                self.output += self._get_worst_bount_by_res(key)
             self.output += ","
 
     def _add_com_req(self):
@@ -147,13 +149,15 @@ class MiniZinc(Translator):
                     self.output += "\n"
         self.output += "]);\n"
 
+
+    def _get_worst_bount_by_res(self, res: str) -> str:
+        if res == "latency":
+            return "MAX_BOUND"
+        return "0"
     def _worst_bounds(self) -> list[str]:
         worstBounds = []
         for name in self.res:
-            if name == "latency":
-                worstBounds.append("MAX_BOUND")
-            else:
-                worstBounds.append("0")
+            worstBounds.append(self._get_worst_bount_by_res(name))
         return worstBounds
 
     def _worst_best_bounds(self):
@@ -217,11 +221,11 @@ class MiniZinc(Translator):
         self.output += "\tif r = N(availability) then nodeCap[ni,r]\n"  # TODO some hardcoded values need to check if they are into the res
         self.output += "\telseif r = N(latency) then 0\n"
         self.output += "\telse worstBounds[r]\n"
-        self.output += "endif\n"
+        self.output += "\tendif\n"
         for node_name in self.intermediate.linkCap:
             for node_name2 in self.intermediate.linkCap[node_name]:
                 self.output += (
-                    "elseif ni = " + node_name + " \\/ nj = " + node_name2 + " then\n"
+                    "elseif ni = " + node_name + " /\\ nj = " + node_name2 + " then\n"
                 )
                 capabilities = self.intermediate.linkCap[node_name][node_name2]
                 if len(capabilities) != 0:
@@ -229,11 +233,12 @@ class MiniZinc(Translator):
                         self.output += "\t"
                         if i != 0:
                             self.output += "else"
-                        self.output += "if r = N(" + str(cap) + ") then "
+                        self.output += "if r = N(" + str(cap) + ") then \t"
                         self._add_formatted_res(cap, capabilities[cap])
+                        self.output+='\n'
 
-                    self.output += "\t else worstBounds[r]\n"
-                    self.output += "endif\n"
+                    self.output += "\telse worstBounds[r]\n"
+                    self.output += "\tendif\n"
                 else:
                     self.output += "\tworstBounds[r]\n"
         self.output += "else\n"
@@ -245,7 +250,10 @@ class MiniZinc(Translator):
         self.output += "imp = array2d(Comps, Flavs, [\n"
         for comp in self.intermediate.comps:
             for flav in self.flav:
-                self.output+= str(self.intermediate.flav_to_importance(flav))+','
+                if flav not in self.intermediate.flav[comp]:
+                    self.output += "0,"
+                else:
+                    self.output+= str(self.intermediate.flav_to_importance(flav))+','
             self.output += "% " + comp + "\n"
         self.output += "]);\n"
 
@@ -263,7 +271,7 @@ class MiniZinc(Translator):
                 else:
                     self.output += "else"
                 self.output += (
-                    "if ci = " + from_comp + " \\/ cj = " + to_comp + " then\n"
+                    "if ci = " + from_comp + " /\\ cj = " + to_comp + " then\n"
                 )
                 for i, res_name in enumerate(
                     self.intermediate.depReq[from_comp][to_comp]
@@ -277,8 +285,8 @@ class MiniZinc(Translator):
                         self.intermediate.depReq[from_comp][to_comp][res_name],
                     )
                     self.output += "\n"
-                self.output += "\t else worstBounds[r]\n"
-                self.output += "endif\n"
+                self.output += "\telse worstBounds[r]\n"
+                self.output += "\tendif\n"
                 self.output += "\n"
         self.output += "else\n"
         self.output += "\tworstBounds[r]\n"

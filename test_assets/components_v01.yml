@@ -109,6 +109,6 @@ requirements:
         availability:
           value: 98
   budget:
-    cost: 50000
+    cost: 5000
     carbon: 500
     
