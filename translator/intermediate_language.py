@@ -59,4 +59,3 @@ class IntermediateLanguage(BaseModel):
         elif node2 in self.linkCap and node1 in self.linkCap[node2]:
             return self.linkCap[node2][node1]
         return None
-

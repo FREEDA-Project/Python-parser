@@ -1,6 +1,6 @@
 from data.application import Application
 from data.infrastructure import Infrastructure
-from pysmt.shortcuts import Symbol, And, Plus, serialize, Equals, Int, Implies, Iff,Or
+from pysmt.shortcuts import Symbol, And, Plus, serialize, Equals, Int, Implies, Iff, Or
 from pysmt.typing import BOOL, INT
 from translator.translator import Translator
 from translator.intermediate_language import IntermediateLanguage
@@ -8,7 +8,6 @@ from config import DEBUG
 
 
 class SMTTranslator(Translator):
-    MAX_BOUND = 1_000_000
 
     def __init__(self, intermediate_language: IntermediateLanguage) -> None:
         self.intermediate = intermediate_language
@@ -23,14 +22,14 @@ class SMTTranslator(Translator):
     def _transform_requirements(self, name, value):
         return value
 
-    def add_constraints(self,constraint):
+    def add_constraints(self, constraint):
         # check if constarint is a list
         if DEBUG:
             print(constraint)
         if isinstance(constraint, list):
             self.constraints.extend(constraint)
         else:
-            self.constraints.append(constraint) 
+            self.constraints.append(constraint)
 
     def generate_constraints(self, D, N):
         self.constraints = []
@@ -38,10 +37,13 @@ class SMTTranslator(Translator):
         print(" --- deploy at most one flavour of a component on a node")
         for component in self.intermediate.comps:
             self.add_constraints(
-                    Plus(D[(component, f, n)] 
+                Plus(
+                    D[(component, f, n)]
                     for f in self.intermediate.flav[component]
-                    for n in self.intermediate.nodes)<= Int(1)
-            ) 
+                    for n in self.intermediate.nodes
+                )
+                <= Int(1)
+            )
         # 1.3
 
         print(" --- must component")
@@ -61,7 +63,7 @@ class SMTTranslator(Translator):
                     ),
                 )
             )
-        
+
         print(" --- deploy used components ")
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
@@ -93,14 +95,14 @@ class SMTTranslator(Translator):
                             print(" --- ", req, val, node)
                             self.add_constraints(
                                 Implies(
-                                    Equals(N[component], Int(i+1)),
+                                    Equals(N[component], Int(i + 1)),
                                     Int(val) * D[(component, flav, node)]
                                     <= self._transform_requirements(
                                         req, self.intermediate.nodeCap[node][req]
                                     ),
                                 )
                             )
-        
+
         # 1.3.1
         print(" --- comulative requirements")
 
@@ -114,7 +116,10 @@ class SMTTranslator(Translator):
                         if req not in self.intermediate.comReq[component][flav]:
                             continue
                         comp_req = self.intermediate.comReq[component][flav][req]
-                        component_requirements.append(self._transform_requirements(req, comp_req) * D[(component, flav, node)])
+                        component_requirements.append(
+                            self._transform_requirements(req, comp_req)
+                            * D[(component, flav, node)]
+                        )
                 val = self._transform_requirements(req, val)
                 self.add_constraints(Plus(component_requirements) <= val)
 
@@ -129,18 +134,20 @@ class SMTTranslator(Translator):
                             for i2, node2 in enumerate(self.intermediate.nodes):
                                 if i1 >= i2:
                                     continue
-                                link_cap = self.intermediate.get_link_cap(node1,node2)
+                                link_cap = self.intermediate.get_link_cap(node1, node2)
                                 if link_cap is None or req not in link_cap:
                                     # TODO: nell'esempio sono tutti definiti però nel caso reale non si sa
                                     continue
                                 val = self._transform_requirements(req, val)
-                                linkCapVal = self._transform_requirements( req, link_cap[req])
-                                if val <= linkCapVal: # per alcuni deve essere maggiore
-                                    print(i1,i2)
+                                linkCapVal = self._transform_requirements(
+                                    req, link_cap[req]
+                                )
+                                if val <= linkCapVal:  # per alcuni deve essere maggiore
+                                    print(i1, i2)
                                     possible_nodes.append(
                                         And(
-                                            Equals(N[component], Int(i1+1)),
-                                            Equals(N[use], Int(i2+1)),
+                                            Equals(N[component], Int(i1 + 1)),
+                                            Equals(N[use], Int(i2 + 1)),
                                         )
                                     )
 
@@ -154,32 +161,35 @@ class SMTTranslator(Translator):
                             )
                         )
 
-        
         # 1.3.3
-        print(" --- budget requirements") 
+        print(" --- budget requirements")
         total_cost = []
         total_cons = []
 
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for node in self.intermediate.nodes:
-                    for req,val in self.intermediate.cost[node].items():
+                    for req, val in self.intermediate.cost[node].items():
                         val = self._transform_requirements(req, val)
-                        comp_req = self.intermediate.comReq[component][flav]['cpu' if req == 'carbon' else req]
-                        if 'carbon' == req:
-                            total_cons.append(comp_req * val*D[(component,flav,node)])
+                        comp_req = self.intermediate.comReq[component][flav][
+                            "cpu" if req == "carbon" else req
+                        ]
+                        if "carbon" == req:
+                            total_cons.append(
+                                comp_req * val * D[(component, flav, node)]
+                            )
                         else:
-                            total_cost.append(comp_req* val*D[(component,flav,node)])
+                            total_cost.append(
+                                comp_req * val * D[(component, flav, node)]
+                            )
 
         total_cost = Plus(total_cost)
-        total_cons = Plus(total_cons) # add constraints here
+        total_cons = Plus(total_cons)  # add constraints here
 
         self.add_constraints(total_cons <= self.intermediate.budget_carbon)
         self.add_constraints(total_cost <= self.intermediate.budget_cost)
 
         return And(self.constraints)
-         
-    
 
     def add_variables(self):
         D = {}

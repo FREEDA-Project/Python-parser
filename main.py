@@ -105,14 +105,21 @@ def load_application(data: dict[str, Any]) -> Application:
     return app
 
 
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Process some files.')
-    parser.add_argument('components', type=str, help='Components file')
-    parser.add_argument('infrastructure', type=str, help='Infrastructure file')
-    parser.add_argument('--output-format', '-f',choices=[ 'minizinc','smt','pulp','z3'], default='pulp', help='Output format')
-    parser.add_argument('--intermediate_file', type=str, help='Intermediate language file')
-    parser.add_argument('--output', '-o',type=str, help='file di output')
+    parser = argparse.ArgumentParser(description="Process some files.")
+    parser.add_argument("components", type=str, help="Components file")
+    parser.add_argument("infrastructure", type=str, help="Infrastructure file")
+    parser.add_argument(
+        "--output-format",
+        "-f",
+        choices=["minizinc", "smt", "pulp", "z3"],
+        default="pulp",
+        help="Output format",
+    )
+    parser.add_argument(
+        "--intermediate_file", type=str, help="Intermediate language file"
+    )
+    parser.add_argument("--output", "-o", type=str, help="file di output")
     # parser -k --key
 
     args = parser.parse_args()
@@ -134,14 +141,14 @@ if __name__ == "__main__":
         intermediate_language = builder.build()
 
     output = ""
-    translator:Translator = None
-    if args.output_format == 'minizinc':
+    translator: Translator = None
+    if args.output_format == "minizinc":
         translator = MiniZinc(intermediate_language=intermediate_language)
-    elif args.output_format == 'smt':
+    elif args.output_format == "smt":
         translator = SMTTranslator(intermediate_language=intermediate_language)
-    elif args.output_format == 'pulp':
+    elif args.output_format == "pulp":
         translator = PulpTranslator(intermediate_language=intermediate_language)
-    elif args.output_format == 'z3':
+    elif args.output_format == "z3":
         translator = Z3Translator(intermediate_language=intermediate_language)
     else:
         raise Exception("Invalid output format")

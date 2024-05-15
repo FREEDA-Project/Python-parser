@@ -1,13 +1,12 @@
 from data.application import Application
 from data.infrastructure import Infrastructure
-from z3 import Symbol, And, Sum,  Int, Implies, Or,Optimize,Bool,sat,PbEq ,If,Solver
+from z3 import Symbol, And, Sum, Int, Implies, Or, Optimize, Bool, sat, PbEq, If, Solver
 from translator.translator import Translator
 from translator.intermediate_language import IntermediateLanguage
 from config import DEBUG
 
 
 class Z3Translator(Translator):
-    MAX_BOUND = 1_000_000
 
     def __init__(self, intermediate_language: IntermediateLanguage) -> None:
         self.intermediate = intermediate_language
@@ -20,9 +19,9 @@ class Z3Translator(Translator):
         self.generate_constraints(D, N)
 
         opt = Optimize()
-        opt.maximize(self.objective(D,N))
+        opt.maximize(self.objective(D, N))
         opt.add(self.constraints)
-        
+
         if opt.check() == sat:
             model = opt.model()
             for component in self.intermediate.comps:
@@ -30,7 +29,7 @@ class Z3Translator(Translator):
                     for node in self.intermediate.nodes:
                         if model[D[(component, flav, node)]]:
                             print(f"{component} {flav} {node}")
-            
+
         else:
             print(opt.unsat_core())
 
@@ -39,42 +38,46 @@ class Z3Translator(Translator):
             print("unsat")
         return opt.model()
 
-    def objective(self,D,N):
+    def objective(self, D, N):
         all = []
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for node in self.intermediate.nodes:
-                    all.append(D[(component,flav,node)]*self.intermediate.flav_to_importance(flav))
-        
+                    all.append(
+                        D[(component, flav, node)]
+                        * self.intermediate.flav_to_importance(flav)
+                    )
+
         return Sum(all)
 
     def _transform_requirements(self, name, value):
-        if name == 'latency':
+        if name == "latency":
             return -value
         return value
 
-    def add_constraint(self,constraint):
+    def add_constraint(self, constraint):
         # check if constarint is a list
         if DEBUG:
             print(constraint)
         if isinstance(constraint, list):
             self.constraints.extend(constraint)
         else:
-            self.constraints.append(constraint) 
-    
-    
+            self.constraints.append(constraint)
 
     def generate_constraints(self, D, N):
         # 1.2
-        if  DEBUG:
+        if DEBUG:
             print(" --- deploy at most one flavour of a component on a node")
         for component in self.intermediate.comps:
             self.add_constraint(
-                    Sum(
-                        [D[(component, f, n)]
-                         for f in self.intermediate.flav[component]
-                         for n in self.intermediate.nodes]
-                    )<= 1
+                Sum(
+                    [
+                        D[(component, f, n)]
+                        for f in self.intermediate.flav[component]
+                        for n in self.intermediate.nodes
+                    ]
+                )
+                <= 1
             )
         # 1.3
         if DEBUG:
@@ -83,14 +86,17 @@ class Z3Translator(Translator):
             self.add_constraint(
                 And(
                     N[must] > 0,
-                        Sum([
+                    Sum(
+                        [
                             D[(must, f, n)]
                             for f in self.intermediate.flav[must]
                             for n in self.intermediate.nodes
-                        ])==1
+                        ]
+                    )
+                    == 1,
                 )
             )
-        if DEBUG: 
+        if DEBUG:
             print(" --- deploy used components ")
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
@@ -122,14 +128,14 @@ class Z3Translator(Translator):
                         if req in self.intermediate.nodeCap[node]:
                             self.add_constraint(
                                 Implies(
-                                    N[component] == i+1,
+                                    N[component] == i + 1,
                                     If(D[(component, flav, node)], val, 0)
                                     <= self._transform_requirements(
                                         req, self.intermediate.nodeCap[node][req]
                                     ),
                                 )
                             )
-        
+
         # 1.3.1
         if DEBUG:
             print(" --- comulative requirements")
@@ -143,15 +149,17 @@ class Z3Translator(Translator):
                         if req not in self.intermediate.comReq[component][flav]:
                             continue
                         comp_req = self.intermediate.comReq[component][flav][req]
-                        component_requirements.append(self._transform_requirements(req, comp_req) * D[(component, flav, node)])
+                        component_requirements.append(
+                            self._transform_requirements(req, comp_req)
+                            * D[(component, flav, node)]
+                        )
                 val = self._transform_requirements(req, val)
                 self.add_constraint(Sum(component_requirements) <= val)
 
         # 1.3.2
-        return 
         if DEBUG:
             print(" --- link requirements")
-        
+
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for use in self.intermediate.uses[component][flav]:
@@ -162,24 +170,26 @@ class Z3Translator(Translator):
                             for i2, node2 in enumerate(self.intermediate.nodes):
                                 if i1 >= i2:
                                     continue
-                                link_cap = self.intermediate.get_link_cap(node1,node2)
+                                link_cap = self.intermediate.get_link_cap(node1, node2)
                                 if link_cap is None or req not in link_cap:
                                     # TODO: nell'esempio sono tutti definiti però nel caso reale non si sa
                                     continue
-                                linkCapVal = self._transform_requirements(req, link_cap[req])
-                                if val <= linkCapVal: # per alcuni deve essere maggiore
+                                linkCapVal = self._transform_requirements(
+                                    req, link_cap[req]
+                                )
+                                if val <= linkCapVal:  # per alcuni deve essere maggiore
                                     possible_nodes.append(
                                         And(
-                                            N[component]== i1+1,
-                                            N[use]== i2+1,
+                                            N[component] == i1 + 1,
+                                            N[use] == i2 + 1,
                                         )
                                     )
                             possible_nodes.append(
                                 And(
-                                    N[component] == i1+1,
-                                    N[use] == i1+1,
+                                    N[component] == i1 + 1,
+                                    N[use] == i1 + 1,
                                 )
-                            )  
+                            )
 
                         self.add_constraint(
                             Implies(
@@ -191,35 +201,35 @@ class Z3Translator(Translator):
                             )
                         )
 
-        
         # 1.3.3
         if DEBUG:
-            print(" --- budget requirements") 
+            print(" --- budget requirements")
         total_cost = []
         total_cons = []
 
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for node in self.intermediate.nodes:
-                    for req,val in self.intermediate.cost[node].items():
+                    for req, val in self.intermediate.cost[node].items():
                         val = self._transform_requirements(req, val)
-                        req_comp = 'cpu' if req == 'carbon' else req
+                        req_comp = "cpu" if req == "carbon" else req
                         if req_comp not in self.intermediate.comReq[component][flav]:
                             continue
                         comp_req = self.intermediate.comReq[component][flav][req_comp]
-                        if 'carbon' == req:
-                            total_cons.append(comp_req * val*D[(component,flav,node)])
+                        if "carbon" == req:
+                            total_cons.append(
+                                comp_req * val * D[(component, flav, node)]
+                            )
                         else:
-                            total_cost.append(comp_req* val*D[(component,flav,node)])
+                            total_cost.append(
+                                comp_req * val * D[(component, flav, node)]
+                            )
 
         total_cost = Sum(total_cost)
-        total_cons = Sum(total_cons) # add constraints here
+        total_cons = Sum(total_cons)  # add constraints here
 
         self.add_constraint(total_cons <= self.intermediate.budget_carbon)
         self.add_constraint(total_cost <= self.intermediate.budget_cost)
-
-         
-    
 
     def add_variables(self):
         D = {}
@@ -248,10 +258,10 @@ class Z3Translator(Translator):
 
 
 # TO debug
-#for i,c in enumerate(self.constraints):
+# for i,c in enumerate(self.constraints):
 #    opt.assert_and_track(c, str(i))
 
-#for component in self.intermediate.comps:
+# for component in self.intermediate.comps:
 #    for flav in self.intermediate.flav[component]:
 #        for node in self.intermediate.nodes:
 #            if (flav=='medium' and component=='frontend' and node =='n3')\

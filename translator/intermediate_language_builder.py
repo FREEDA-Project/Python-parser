@@ -8,6 +8,7 @@ from data.requirement import Requirement
 from data.capability import Capability
 from translator.intermediate_language import IntermediateLanguage
 
+
 class IntermediateLanguageBuilder:
     def __init__(self, app: Application, infrastructure: Infrastructure) -> None:
         self.app = app
@@ -68,12 +69,16 @@ class IntermediateLanguageBuilder:
         if isinstance(prop.value, list) and prop.name == "security":
             for flav in prop.value:
                 map[flav] = 1
-        elif isinstance(prop.value, int) or prop.name in IntermediateLanguage.RES_LIST():
+        elif (
+            isinstance(prop.value, int) or prop.name in IntermediateLanguage.RES_LIST()
+        ):
             map[prop.name] = prop.value
         else:
             raise Exception(
-                "Error in the propieties_capability, value must be a float and one of "+
-                str(IntermediateLanguage.RES_LIST()) + "but was given" + str(prop)
+                "Error in the propieties_capability, value must be a float and one of "
+                + str(IntermediateLanguage.RES_LIST())
+                + "but was given"
+                + str(prop)
             )
 
     def _extract_cost(self):

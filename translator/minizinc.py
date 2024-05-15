@@ -4,12 +4,21 @@ from translator.translator import Translator
 
 
 class MiniZinc(Translator):
-
     def __init__(self, intermediate_language: IntermediateLanguage):
         self.output = ""
         self.intermediate = intermediate_language
-        self.intermediate.res = ['cpu', 'ram', 'storage', 'bwIn', 'bwOut',  'ssl', 'firewall', 'encrypted_storage', 'availability', 'latency']
-        
+        self.intermediate.res = [
+            "cpu",
+            "ram",
+            "storage",
+            "bwIn",
+            "bwOut",
+            "ssl",
+            "firewall",
+            "encrypted_storage",
+            "availability",
+            "latency",
+        ]
 
         self._add_component()
         self._must_components()
@@ -45,9 +54,7 @@ class MiniZinc(Translator):
         for node_name in self.intermediate.nodes:
             for i in self.res:
                 if i == "cpu":
-                    self.output += str(
-                        int(self.intermediate.cost[node_name]["carbon"])
-                    )
+                    self.output += str(int(self.intermediate.cost[node_name]["carbon"]))
                 else:
                     self.output += "0"
                 self.output += ","
@@ -108,9 +115,7 @@ class MiniZinc(Translator):
         for key in self.intermediate.comps:
             for val in self.flav:
                 if val in self.intermediate.flav[key]:
-                    uses.append(
-                        "{" + ",".join(self.intermediate.uses[key][val]) + "}"
-                    )
+                    uses.append("{" + ",".join(self.intermediate.uses[key][val]) + "}")
         self.output += ",".join(uses)
         self.output += "];\n"
 
@@ -135,25 +140,22 @@ class MiniZinc(Translator):
             for flav_name in self.flav:
                 if flav_name in self.intermediate.flav[component_name]:
                     if (
-                        flav_name
-                        not in self.intermediate.comReq[component_name]
+                        flav_name not in self.intermediate.comReq[component_name]
                         or component_name not in self.intermediate.comReq
                     ):
                         self.output += ",".join(self._worst_bounds()) + ","
                     else:
-                        flav_val = self.intermediate.comReq[component_name][
-                            flav_name
-                        ]
+                        flav_val = self.intermediate.comReq[component_name][flav_name]
                         self._add_all_resources(flav_val, True)
                     self.output += "% " + component_name + "," + flav_name
                     self.output += "\n"
         self.output += "]);\n"
 
-
     def _get_worst_bount_by_res(self, res: str) -> str:
         if res == "latency":
             return "MAX_BOUND"
         return "0"
+
     def _worst_bounds(self) -> list[str]:
         worstBounds = []
         for name in self.res:
@@ -196,9 +198,7 @@ class MiniZinc(Translator):
         for node_name in self.intermediate.nodes:
             for res in self.res:
                 if res in self.intermediate.cost[node_name]:
-                    self._add_formatted_res(
-                        res, self.intermediate.cost[node_name][res]
-                    )
+                    self._add_formatted_res(res, self.intermediate.cost[node_name][res])
                 else:
                     self.output += "0"
                 self.output += ","
@@ -206,9 +206,7 @@ class MiniZinc(Translator):
         self.output += "]);\n"
 
     def _budget(self):
-        self.output += (
-            "costBudget =" + str(int(self.intermediate.budget_cost)) + ";\n"
-        )
+        self.output += "costBudget =" + str(int(self.intermediate.budget_cost)) + ";\n"
         self.output += (
             "consBudget =" + str(int(self.intermediate.budget_carbon)) + ";\n"
         )
@@ -235,7 +233,7 @@ class MiniZinc(Translator):
                             self.output += "else"
                         self.output += "if r = N(" + str(cap) + ") then \t"
                         self._add_formatted_res(cap, capabilities[cap])
-                        self.output+='\n'
+                        self.output += "\n"
 
                     self.output += "\telse worstBounds[r]\n"
                     self.output += "\tendif\n"
@@ -253,7 +251,7 @@ class MiniZinc(Translator):
                 if flav not in self.intermediate.flav[comp]:
                     self.output += "0,"
                 else:
-                    self.output+= str(self.intermediate.flav_to_importance(flav))+','
+                    self.output += str(self.intermediate.flav_to_importance(flav)) + ","
             self.output += "% " + comp + "\n"
         self.output += "]);\n"
 
