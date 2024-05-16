@@ -1,6 +1,6 @@
 from data.application import Application
 from data.infrastructure import Infrastructure
-from z3 import Symbol, And, Sum, Int, Implies, Or, Optimize, Bool, sat, PbEq, If, Solver
+from z3 import Symbol, And, Sum, Int, Implies, Or, Optimize, Bool, sat, PbEq, If, Solver,Xor
 from translator.translator import Translator
 from translator.intermediate_language import IntermediateLanguage
 from config import DEBUG
@@ -163,43 +163,25 @@ class Z3Translator(Translator):
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for use in self.intermediate.uses[component][flav]:
-                    for req, val in self.intermediate.depReq[component][use].items():
-                        val = self._transform_requirements(req, val)
-                        possible_nodes = []
-                        for i1, node1 in enumerate(self.intermediate.nodes):
-                            for i2, node2 in enumerate(self.intermediate.nodes):
-                                if i1 >= i2:
-                                    continue
-                                link_cap = self.intermediate.get_link_cap(node1, node2)
-                                if link_cap is None or req not in link_cap:
-                                    # TODO: nell'esempio sono tutti definiti però nel caso reale non si sa
-                                    continue
-                                linkCapVal = self._transform_requirements(
-                                    req, link_cap[req]
-                                )
-                                if val <= linkCapVal:  # per alcuni deve essere maggiore
-                                    possible_nodes.append(
-                                        And(
-                                            N[component] == i1 + 1,
-                                            N[use] == i2 + 1,
-                                        )
+                    for uses_flav in self.intermediate.flav[use]:
+                        for req, val in self.intermediate.depReq[component][use].items():
+                            val = self._transform_requirements(req, val)
+                            possible_nodes = []
+                            for i1, node1 in enumerate(self.intermediate.nodes):
+                                for i2, node2 in enumerate(self.intermediate.nodes):
+                                    if i1 >= i2:
+                                        continue
+                                    link_cap = self.intermediate.get_link_cap(node1, node2)
+                                    if link_cap is None or req not in link_cap:
+                                        # TODO: nell'esempio sono tutti definiti però nel caso reale non si sa
+                                        continue
+                                    linkCapVal = self._transform_requirements(
+                                        req, link_cap[req]
                                     )
-                            possible_nodes.append(
-                                And(
-                                    N[component] == i1 + 1,
-                                    N[use] == i1 + 1,
-                                )
-                            )
-
-                        self.add_constraint(
-                            Implies(
-                                And(
-                                    N[component] > 0,
-                                    N[use] > 0,
-                                ),
-                                Or(possible_nodes),
-                            )
-                        )
+                                    if val > linkCapVal:  # per alcuni deve essere maggiore
+                                        self.add_constraint(
+                                                Sum(D[(component,flav,node1)], D[(use,uses_flav,node2)])<=1
+                                        )
 
         # 1.3.3
         if DEBUG:

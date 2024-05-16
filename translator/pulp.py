@@ -19,7 +19,7 @@ class PulpTranslator(Translator):
 
     def _gen_problem(self) -> LpProblem:
         self.solver = LpProblem("Solver", LpMaximize)
-        D = self.add_variables(self.solver)
+        D = self.add_variables()
         self.generate_constraints(D)
         self.solver += self.objective(D)
 
@@ -29,18 +29,6 @@ class PulpTranslator(Translator):
         )
         # solve this problem
 
-        for component in self.intermediate.comps:
-            for flav in self.intermediate.flav[component]:
-                for node in self.intermediate.nodes:
-                    if (flav=='medium' and component=='frontend' and node =='n3')\
-                    or (flav=='tiny' and component=='backend' and node=='n3'):
-                        D[(component,flav,node)].setInitialValue(True)
-
-                    else:
-                        D[(component,flav,node)].setInitialValue(False)
-                    
-                    D[(component,flav,node)].fixValue()
-
 
 
         self.solver.solve(cplex_solver)
@@ -48,10 +36,6 @@ class PulpTranslator(Translator):
             if LpStatus[self.solver.status] == "Infeasible":
                 print("UnSolved:", LpStatus[self.solver.status])
                 print("No feasible solution found")
-                print("Unsatisfied constraints:")
-                for name, constraint in self.solver.constraints.items():
-                    if not constraint.valid():
-                        print(f"{name}: {constraint}")
             for v in self.solver.variables():
                 print(f"{v.name} = {v.varValue}")
             print(f"Objective value = {self.solver.objective.value()}")
@@ -224,24 +208,13 @@ class PulpTranslator(Translator):
                                     val_link = self._transform_requirements(
                                         req, link_cap[req]
                                     )
-                                    klen = len(K)
-                                    K[klen] = LpVariable(
-                                        f"K_{klen}", 0, 1, cat="Binary"
-                                    )
-                                    self.add_constraint(
-                                        K[klen] <= D[(component, flav, node1)]
-                                    )
-                                    self.add_constraint(
-                                        K[klen] <= D[(uses, uses_flav, node2)]
-                                    )
-                                    self.add_constraint(
-                                        K[klen]
-                                        >= D[(component, flav, node1)]
-                                        + D[(uses, uses_flav, node2)]
-                                        - 1
-                                    )
-                                    val = self._transform_requirements(req, val)
-                                    self.add_constraint(val*K[klen] <= val_link * K[klen])
+                                    val = self._transform_requirements(req,val)
+                                    if val >val_link:
+                                        self.add_constraint(
+                                            D[(component, flav, node1)]
+                                            + D[(uses, uses_flav, node2)]
+                                            <= 1
+                                        )
 
 
         total_cost = []
