@@ -157,6 +157,7 @@ class PulpTranslator(Translator):
 
                     # forse si può fare di meglio, si possono selezionare i nodi in cui un determinato falvour può andare
                     # e impostare gli altri a zero
+                    # volendo si potrebbero direttamente toglierde
 
                     for node in nodes_with_cap:
                         cap= self._transform_requirements(req,val) 
@@ -167,21 +168,6 @@ class PulpTranslator(Translator):
                             print(cap,nodeCap,req)
                             self.add_constraint(D[(component,flav,node)]==0)
                    
-                    #self.add_constraint(
-                    #    lpSum(
-                    #        self._transform_requirements(req, val)
-                    #        * D[(component, flav, node)]
-                    #        for node in nodes_with_cap
-                    #    )
-                    #    <= lpSum(
-                    #        D[(component, flav, node)]
-                    #        * self._transform_requirements(
-                    #            req, self.intermediate.nodeCap[node][req]
-                    #        )
-                    #        for node in nodes_with_cap
-                    #    )
-                    #)
-
         # 1.3.1
         if DEBUG:
             print(" --- comulative requirements")
@@ -218,7 +204,6 @@ class PulpTranslator(Translator):
         if DEBUG:
             print(" --- link requirements")
         K = {}
-        BOTH_ACTIVATE = {}
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for uses in self.intermediate.uses[component][flav]:
@@ -226,7 +211,6 @@ class PulpTranslator(Translator):
                         for req, val in self.intermediate.depReq[component][
                             uses
                         ].items():  # qui è importante l'ordine
-                            all = []
                             for i, node1 in enumerate(self.intermediate.nodes):
                                 for j, node2 in enumerate(self.intermediate.nodes):
                                     if i >= j:
@@ -244,7 +228,6 @@ class PulpTranslator(Translator):
                                     K[klen] = LpVariable(
                                         f"K_{klen}", 0, 1, cat="Binary"
                                     )
-                                    all.append(val_link * K[klen])
                                     self.add_constraint(
                                         K[klen] <= D[(component, flav, node1)]
                                     )
@@ -257,41 +240,8 @@ class PulpTranslator(Translator):
                                         + D[(uses, uses_flav, node2)]
                                         - 1
                                     )
-                                    print(node1,node2,K[klen])
-                                    K[klen].setInitialValue(0)
-                                    K[klen].fixValue()
-                                # add also on the same node
-                                klen = len(K)
-                                K[klen] = LpVariable(
-                                    f"K_{klen}", 0, 1, cat="Binary"
-                                )
-                                self.add_constraint(
-                                    K[klen] <= D[(component, flav, node1)]
-                                )
-                                self.add_constraint(
-                                    K[klen] <= D[(uses, uses_flav, node1)]
-                                )
-                                self.add_constraint(
-                                    K[klen]
-                                    >= D[(component, flav, node1)]
-                                    + D[(uses, uses_flav, node1)]
-                                    - 1
-                                )
-                                new_val = 0
-                                if req=='latency':
-                                    new_val=  PulpTranslator.MAX_BOUND
-                                all.append(self._transform_requirements(req,new_val) * K[klen])
-                                print(node1,K[klen])
-                                if (node1=='n3') and  ((flav=='medium' and component=='frontend' ) and (uses_flav=='tiny' and uses=='backend' )):
-                                    K[klen].setInitialValue(1)
-                                    K[klen].fixValue()
-                                else:
-                                    K[klen].setInitialValue(0)
-                                    K[klen].fixValue()
-
-                            val = self._transform_requirements(req, val)
-                            print(req)
-                            self.add_constraint(val <= lpSum(all))
+                                    val = self._transform_requirements(req, val)
+                                    self.add_constraint(val*K[klen] <= val_link * K[klen])
 
 
         total_cost = []
@@ -321,9 +271,8 @@ class PulpTranslator(Translator):
         self.add_constraint(total_cons <= self.intermediate.budget_carbon)
         self.add_constraint(total_cost <= self.intermediate.budget_cost)
 
-    def add_variables(self, solver):
+    def add_variables(self):
         D = {}
-        # N = {}
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for node in self.intermediate.nodes:
@@ -331,7 +280,5 @@ class PulpTranslator(Translator):
                         f"D_{component}_{flav}_{node}", 0, 1, cat="Binary"
                     )
 
-        # for component in self.intermediate.comps:
-        #    N[component] = LpVariable(f"N_{component}", 0, 1, cat="Binary")
 
         return D
