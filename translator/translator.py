@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+import time
 from translator.intermediate_language import IntermediateLanguage
 
 
@@ -16,4 +16,11 @@ class Translator(ABC):
             file.write(self.to_file_string())
 
     def solve(self):
+        start_time = time.time()
+        res= self._solve()
+        end_time = time.time()
+        execution_time = end_time - start_time
+        return res, execution_time
+
+    def _solve(self):
         pass

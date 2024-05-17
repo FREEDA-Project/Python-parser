@@ -30,7 +30,7 @@ def load_to_intermidiate_language(app_file, infrastructure_file):
     intermediate_language = builder.build()
     return intermediate_language
 
-def get_translator(name,intermidiate)->Translator:
+def get_translator(name,intermidiate):
     translator_class = None
     match name:
         case "minizinc":
@@ -79,7 +79,7 @@ def banchmark(dir_com,dir_inf):
         for inf in tqdm(dir_infrastructure):
             for output_format in [  "z3","pulp"]:
                 intermediate = load_to_intermidiate_language(comp, inf)
-                translator: Translator = get_translator(output_format, intermediate)
+                translator = get_translator(output_format, intermediate)
                 out,time = translator.solve()
                 outputs.append(out)
                 times.append((output_format,time,len(intermediate.comps),len(intermediate.nodes)))

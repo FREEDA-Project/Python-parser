@@ -71,3 +71,7 @@ class IntermediateLanguage(BaseModel):
             all.extend(list(self.depReq[use][component].items()))
         
         return all
+
+    @property
+    def minimized_res(self):
+        return set('latency')
