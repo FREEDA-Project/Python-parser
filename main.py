@@ -1,114 +1,102 @@
 import yaml
 import json
-from typing import Any
-from data.application import Application
-from data.infrastructure import Infrastructure
+import os
 from translator.intermediate_language import IntermediateLanguage
 from translator.intermediate_language_builder import IntermediateLanguageBuilder
 from translator.translator import Translator
 from translator.minizinc import MiniZinc
 import argparse
+from loader import load_application, load_infrastructure
 
+from tqdm import tqdm
 from translator.pulp import PulpTranslator
 from translator.smt import SMTTranslator
 from translator.z3 import Z3Translator
 
 
-def _load_components(data: dict[str, Any], app: Application):
-    for component_name, component_data in data["components"].items():
-        component_type = component_data["type"]
-        must = component_data.get("must", False)
-        app.add_component(name=component_name, component_type=component_type, must=must)
-        # adding flavours
-        for flavour, uses in component_data.get("flavours", {}).items():
-            app.components[component_name].add_flavour(flavour, uses["uses"])
+def load_to_intermidiate_language(app_file, infrastructure_file):
+    with open(app_file, "r") as yaml_file:
+        data = yaml.safe_load(yaml_file)
+        app = load_application(data)
 
+    with open(infrastructure_file, "r") as yaml_file:
+        data = yaml.safe_load(yaml_file)
+        infrastructure = load_infrastructure(data)
 
-def _load_requirements(data: dict[str, Any], app: Application):
-    # adding requirements to each component
-    for component_name, reqs_component_data in data["requirements"][
-        "components"
-    ].items():
-        # adding general requirements
-        for req_name, req_data in reqs_component_data["common"].items():
-            req_value = req_data.get("value")
-            req_soft = req_data.get("soft", False)
-            app.components[component_name].add_component_requirement(
-                req_name, req_value, req_soft
-            )
-        # adding flavour specific requirements
-        if "flavour-specific" not in reqs_component_data:
-            continue
-        for flavour_name, flavour_data in reqs_component_data[
-            "flavour-specific"
-        ].items():
-            for req_name, req_data in flavour_data.items():
-                req_value = req_data.get("value")
-                req_soft = req_data.get("soft", False)
-                app.components[component_name].add_flavour_requirement(
-                    flavour_name, req_name, req_value, req_soft
-                )
+    builder = IntermediateLanguageBuilder(app, infrastructure)
+    intermediate_language = builder.build()
 
-    # load dependency
-    for from_component, data_extracted in data["requirements"]["dependencies"].items():
-        for to_component, requirements in data_extracted.items():
-            app.add_dependency(from_component, to_component)
-            for req_name, req_data in requirements.items():
-                req_value = req_data.get("value")
-                req_soft = req_data.get("soft", False)
-                app.dependencies[from_component][to_component].add_requirement(
-                    req_name, req_value, req_soft
-                )
+    builder = IntermediateLanguageBuilder(app, infrastructure)
+    intermediate_language = builder.build()
+    return intermediate_language
 
-    # load budget
-    budget_data = data["requirements"]["budget"]
-    cost = budget_data.get("cost")
-    carbon = budget_data.get("carbon")
-    app.add_budget(cost, carbon)
+def get_translator(name,intermidiate)->Translator:
+    translator_class = None
+    match name:
+        case "minizinc":
+            translator_class = MiniZinc
+        case "smt":
+            translator_class = SMTTranslator
+        case "pulp":
+            translator_class = PulpTranslator
+        case "z3":
+            translator_class = Z3Translator
+        case _:
+            raise Exception("Invalid output format")
+    return translator_class(intermediate_language=intermidiate)
 
+def banchmark(dir_com,dir_inf):
+    os.makedirs("output", exist_ok=True)
+    if  os.path.isdir(dir_com) and os.path.isdir(dir_inf):
+        dir_components = list(map(lambda x : os.path.join(dir_com,x),os.listdir(dir_com)))
+        dir_infrastructure = list(map(lambda x : os.path.join(dir_inf,x),os.listdir(dir_inf)))
+    elif os.path.isfile(dir_com) and os.path.isfile(dir_inf):
+        dir_components = [dir_com]
+        dir_infrastructure = [dir_inf]
+    else:
+        raise Exception("Invalid input")
+    
+    def check_equal_outputs(output1,output2):
+        def trim(st):
+            # a string like 'a_b_c' should become "a_b"
+            st = st.split("_")
+            return "_".join(st[:-1])
+        if output1 is not None and output2 is not None:
+            o1 = map(trim, outputs[0][0])
+            o2 = map( trim , outputs[1][0])
+            if set(output1[0]) != set(output2[0]):
+                return False
+        elif output1 is None and output2 is None:
+            return True
+        else:
+            return False
+        return True
 
-def load_infrastructure(data: dict[str, Any]) -> Infrastructure:
-    infrastructure = Infrastructure(name=data["name"])
-    for node_name in data["nodes"]:
-        infrastructure.add_node(node_name)
-        profile = data["nodes"][node_name].get("profile", {})
-        cost_ram = profile["cost"].get("ram", 0)
-        cost_cpu = profile["cost"].get("cpu", 0)
-        cost_storage = profile["cost"].get("storage", 0)
-        carbon = profile.get("carbon", 0)
-        infrastructure.nodes[node_name].set_profile(
-            cost_ram=cost_ram,
-            cost_cpu=cost_cpu,
-            cost_storage=cost_storage,
-            carbon=carbon,
-        )
-        for capability_name, capability_value in data["nodes"][node_name][
-            "capabilities"
-        ].items():
-            infrastructure.nodes[node_name].add_capability(
-                capability_name, capability_value
-            )
+    exceptions = []
+    outputs = []         
+    times = []
+    for comp in tqdm(dir_components):
+        for inf in tqdm(dir_infrastructure):
+            for output_format in [  "z3","pulp"]:
+                intermediate = load_to_intermidiate_language(comp, inf)
+                translator: Translator = get_translator(output_format, intermediate)
+                out,time = translator.solve()
+                outputs.append(out)
+                times.append((output_format,time,len(intermediate.comps),len(intermediate.nodes)))
+            if not check_equal_outputs(outputs[0],outputs[1]):
+                exceptions.append((comp,inf,outputs[0],outputs[1]))   
 
-    for link_data in data["links"]:
-        connected_nodes = link_data["connected_nodes"]
-        infrastructure.add_link(node1=connected_nodes[0], node2=connected_nodes[1])
-        for capability_name, capability_value in link_data["capabilities"].items():
-            infrastructure.links[-1].add_capability(capability_name, capability_value)
-    return infrastructure
+    with open("output/benchmark.json", "w") as f:
+        f.write(json.dumps(times))
+    print(exceptions)
 
-
-def load_application(data: dict[str, Any]) -> Application:
-    app = Application(name=data["name"])
-
-    _load_components(data, app)
-    _load_requirements(data, app)
-    return app
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some files.")
     parser.add_argument("components", type=str, help="Components file")
     parser.add_argument("infrastructure", type=str, help="Infrastructure file")
+    parser.add_argument("--banchmark",'-b',  help=" compoment and infrastructure should be directory", action='store_true')
     parser.add_argument(
         "--output-format",
         "-f",
@@ -116,44 +104,20 @@ if __name__ == "__main__":
         default="pulp",
         help="Output format",
     )
-    parser.add_argument(
-        "--intermediate_file", type=str, help="Intermediate language file"
-    )
     parser.add_argument("--output", "-o", type=str, help="file di output")
     # parser -k --key
 
     args = parser.parse_args()
 
-    if args.intermediate_file:
-        with open(args.intermediate_file, "r") as file:
-            data = json.loads(file.read())
-            intermediate_language = IntermediateLanguage(*data)
-    else:
-        with open(args.components, "r") as yaml_file:
-            data = yaml.safe_load(yaml_file)
-            app = load_application(data)
+    if args.banchmark:
+        banchmark(args.components, args.infrastructure)
+        exit(0)
+    else: 
+        intermediate = load_to_intermidiate_language(args.components, args.infrastructure)
+        translator: Translator = get_translator(args.output_format, intermediate)
 
-        with open(args.infrastructure, "r") as yaml_file:
-            data = yaml.safe_load(yaml_file)
-            infrastructure = load_infrastructure(data)
+        if args.output:
+            translator.write_to_file(args.output)
+        else:
+            print(translator.to_file_string())
 
-        builder = IntermediateLanguageBuilder(app, infrastructure)
-        intermediate_language = builder.build()
-
-    output = ""
-    translator: Translator = None
-    if args.output_format == "minizinc":
-        translator = MiniZinc(intermediate_language=intermediate_language)
-    elif args.output_format == "smt":
-        translator = SMTTranslator(intermediate_language=intermediate_language)
-    elif args.output_format == "pulp":
-        translator = PulpTranslator(intermediate_language=intermediate_language)
-    elif args.output_format == "z3":
-        translator = Z3Translator(intermediate_language=intermediate_language)
-    else:
-        raise Exception("Invalid output format")
-
-    if args.output:
-        translator.write_to_file(args.output)
-    else:
-        print(translator.to_file_string())

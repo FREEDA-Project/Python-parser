@@ -39,6 +39,8 @@ class IntermediateLanguage(BaseModel):
             res.append(get_roots(graph))
 
         # get the roots with less components
+        if len(res) == 0:
+            raise ValueError("A component must be use")
         return min(res, key=len)
 
     @classmethod
@@ -59,3 +61,13 @@ class IntermediateLanguage(BaseModel):
         elif node2 in self.linkCap and node1 in self.linkCap[node2]:
             return self.linkCap[node2][node1]
         return None
+
+    def get_dep_req(self,component, use):
+        all = []
+        if component in self.depReq and use in self.depReq[component]:
+            all = list(self.depReq[component][use].items())
+        
+        if use in self.depReq and  component in self.depReq[use]:
+            all.extend(list(self.depReq[use][component].items()))
+        
+        return all

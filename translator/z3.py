@@ -1,9 +1,17 @@
-from data.application import Application
-from data.infrastructure import Infrastructure
-from z3 import Symbol, And, Sum, Int, Implies, Or, Optimize, Bool, sat, PbEq, If, Solver,Xor
-from translator.translator import Translator
-from translator.intermediate_language import IntermediateLanguage
+from z3 import (
+    And,
+    Bool,
+    If,
+    Implies,
+    Optimize,
+    Sum,
+    sat,
+)
+
 from config import DEBUG
+from translator.intermediate_language import IntermediateLanguage
+from translator.translator import Translator
+import time
 
 
 class Z3Translator(Translator):
@@ -12,6 +20,9 @@ class Z3Translator(Translator):
         self.intermediate = intermediate_language
 
     def to_file_string(self) -> str:
+        return self.gen_problem().model()
+    
+    def gen_problem(self):
         self._set_flavs()
         D, N = self.add_variables()
 
@@ -21,22 +32,22 @@ class Z3Translator(Translator):
         opt = Optimize()
         opt.maximize(self.objective(D, N))
         opt.add(self.constraints)
-
+        return opt
+    
+    def solve(self):
+        opt = self.gen_problem()
+        start_time = time.time()
         if opt.check() == sat:
             model = opt.model()
-            for component in self.intermediate.comps:
-                for flav in self.intermediate.flav[component]:
-                    for node in self.intermediate.nodes:
-                        if model[D[(component, flav, node)]]:
-                            print(f"{component} {flav} {node}")
-
+            end_time = time.time()
+            execution_time = end_time - start_time
+            # get the variable that are true
+            return [str(k) for k in model if model[k]],execution_time
         else:
-            print(opt.unsat_core())
-
-            for c in opt.unsat_core():
-                print(c)
-            print("unsat")
-        return opt.model()
+            end_time = time.time()
+            execution_time = end_time - start_time
+            return None,execution_time
+        
 
     def objective(self, D, N):
         all = []
@@ -159,14 +170,14 @@ class Z3Translator(Translator):
         # 1.3.2
         if DEBUG:
             print(" --- link requirements")
+        
 
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for use in self.intermediate.uses[component][flav]:
                     for uses_flav in self.intermediate.flav[use]:
-                        for req, val in self.intermediate.depReq[component][use].items():
+                        for req, val in self.intermediate.get_dep_req(component, use):
                             val = self._transform_requirements(req, val)
-                            possible_nodes = []
                             for i1, node1 in enumerate(self.intermediate.nodes):
                                 for i2, node2 in enumerate(self.intermediate.nodes):
                                     if i1 >= i2:

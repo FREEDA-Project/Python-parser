@@ -1,6 +1,9 @@
 from typing import Any, Optional
 from translator.intermediate_language import IntermediateLanguage
 from translator.translator import Translator
+from config import MINIZINC_SOLVER_PATH,MINIZINC_MODEL,MINIZINC_PATH_SOVER_SAVE
+import os
+import subprocess
 
 
 class MiniZinc(Translator):
@@ -261,35 +264,49 @@ class MiniZinc(Translator):
 
     def _dependency_requirement(self):
         self.output += "depReq = array3d(Comps, Comps, Res,[\n"
-        first = True
-        for from_comp in self.intermediate.depReq:
-            for to_comp in self.intermediate.depReq[from_comp]:
-                if first:
-                    first = False
-                else:
-                    self.output += "else"
-                self.output += (
-                    "if ci = " + from_comp + " /\\ cj = " + to_comp + " then\n"
-                )
-                for i, res_name in enumerate(
-                    self.intermediate.depReq[from_comp][to_comp]
-                ):
-                    self.output += "\t"
-                    if i != 0:
+        if len(self.intermediate.depReq) == 0:
+            self.output += "\tworstBounds[r]\n % may be wrong"
+            self.output += "ci in Comps, cj in Comps, r in Res\n"
+        else:
+            first = True
+            for from_comp in self.intermediate.depReq:
+                for to_comp in self.intermediate.depReq[from_comp]:
+                    if first:
+                        first = False
+                    else:
                         self.output += "else"
-                    self.output += "if r = N(" + res_name + ") then "
-                    self._add_formatted_res(
-                        res_name,
-                        self.intermediate.depReq[from_comp][to_comp][res_name],
+                    self.output += (
+                        "if ci = " + from_comp + " /\\ cj = " + to_comp + " then\n"
                     )
+                    for i, res_name in enumerate(
+                        self.intermediate.depReq[from_comp][to_comp]
+                    ):
+                        self.output += "\t"
+                        if i != 0:
+                            self.output += "else"
+                        self.output += "if r = N(" + res_name + ") then "
+                        self._add_formatted_res(
+                            res_name,
+                            self.intermediate.depReq[from_comp][to_comp][res_name],
+                        )
+                        self.output += "\n"
+                    self.output += "\telse worstBounds[r]\n"
+                    self.output += "\tendif\n"
                     self.output += "\n"
-                self.output += "\telse worstBounds[r]\n"
-                self.output += "\tendif\n"
-                self.output += "\n"
-        self.output += "else\n"
-        self.output += "\tworstBounds[r]\n"
-        self.output += "endif | ci in Comps, cj in Comps, r in Res\n"
+            self.output += "else\n"
+            self.output += "\tworstBounds[r]\n"
+            self.output += "endif | ci in Comps, cj in Comps, r in Res\n"
         self.output += "]);\n"
 
     def to_file_string(self) -> str:
         return self.output
+    
+    def solve(self):
+        path =os.path.join(MINIZINC_PATH_SOVER_SAVE, "params.dzn")
+        with open(path, "w") as f:
+            f.write(self.to_file_string())
+        breakpoint() 
+        cmd = f"{MINIZINC_SOLVER_PATH} {MINIZINC_MODEL} {path}"
+        result = subprocess.run(cmd, shell=True, capture_output=True)
+        print(result.stdout)
+        return None

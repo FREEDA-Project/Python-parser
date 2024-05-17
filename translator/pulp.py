@@ -8,7 +8,9 @@ from pulp import (
 )
 from translator.intermediate_language import IntermediateLanguage
 from translator.translator import Translator
-from config import DEBUG
+from config import DEBUG, CBC_SOLVER_PATH
+import time
+
 
 
 class PulpTranslator(Translator):
@@ -22,30 +24,28 @@ class PulpTranslator(Translator):
         D = self.add_variables()
         self.generate_constraints(D)
         self.solver += self.objective(D)
+        return self.solver
 
+    def solve(self):
+        self.solver = self._gen_problem()
         cplex_solver = PULP_CBC_CMD()
         cplex_solver.path = (
-            "/nix/store/njg5gbfmsif7msq7ajanvn0vh9dhhhjh-cbc-2.10.4/bin/cbc"
+            CBC_SOLVER_PATH
         )
-        # solve this problem
 
 
-
+        start_time = time.time()
         self.solver.solve(cplex_solver)
-        if DEBUG:
-            if LpStatus[self.solver.status] == "Infeasible":
-                print("UnSolved:", LpStatus[self.solver.status])
-                print("No feasible solution found")
-            for v in self.solver.variables():
-                print(f"{v.name} = {v.varValue}")
-            print(f"Objective value = {self.solver.objective.value()}")
+        end_time = time.time()
+        execution_time = end_time - start_time
+        if LpStatus[self.solver.status] == "Infeasible":
+            return None,execution_time
 
-        return {}
+        return list(map(lambda x:str(x),filter(lambda x: x.varValue == 1, self.solver.variables()))),execution_time
+        
 
     def to_file_string(self) -> str:
-        import json
-
-        return json.dumps(self._gen_problem())
+        raise NotImplementedError()
 
 
     def write_to_file(self, file_path: str):
@@ -149,7 +149,6 @@ class PulpTranslator(Translator):
                                req, self.intermediate.nodeCap[node][req]
                         )
                         if cap>nodeCap:
-                            print(cap,nodeCap,req)
                             self.add_constraint(D[(component,flav,node)]==0)
                    
         # 1.3.1
@@ -170,8 +169,6 @@ class PulpTranslator(Translator):
                             * D[(component, flav, node)]
                         )
                 val = self._transform_requirements(req, val)
-                print(req)
-                print(lpSum(component_requirements)<=val)
                 self.add_constraint(lpSum(component_requirements) <= val)
 
 
@@ -184,17 +181,24 @@ class PulpTranslator(Translator):
         #        ) <= self._transform_requirements(req,self.intermediate.nodeCap[node][req])
 
         # 1.3.2
+        def get_dep_req(component, use):
+            all = []
+            if component in self.intermediate.depReq and use in self.intermediate.depReq[component]:
+                all = list(self.intermediate.depReq[component][use].item())
+            
+            if use in self.intermediate.depReq and  component in self.intermediate.depReq[use]:
+                all.extend(list(self.intermediate.depReq[use][component].item()))
+            
+            return all
+
 
         if DEBUG:
             print(" --- link requirements")
-        K = {}
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for uses in self.intermediate.uses[component][flav]:
                     for uses_flav in self.intermediate.flav[uses]:
-                        for req, val in self.intermediate.depReq[component][
-                            uses
-                        ].items():  # qui è importante l'ordine
+                        for req,val in self.intermediate.get_dep_req(component,uses):
                             for i, node1 in enumerate(self.intermediate.nodes):
                                 for j, node2 in enumerate(self.intermediate.nodes):
                                     if i >= j:
@@ -250,7 +254,7 @@ class PulpTranslator(Translator):
             for flav in self.intermediate.flav[component]:
                 for node in self.intermediate.nodes:
                     D[(component, flav, node)] = LpVariable(
-                        f"D_{component}_{flav}_{node}", 0, 1, cat="Binary"
+                        f"{component}_{flav}_{node}", 0, 1, cat="Binary"
                     )
 
 

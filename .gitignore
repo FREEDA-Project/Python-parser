@@ -1,3 +1,6 @@
+output/
+randomize_test/cmp/*
+randomize_test/infr/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
