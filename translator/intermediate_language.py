@@ -19,7 +19,8 @@ class IntermediateLanguage(BaseModel):
     cost: dict[str, dict[str, Any]]
     linkCap: dict[str, dict[str, dict[str, Any]]]
 
-    def flav_to_importance(self, flav):
+    @classmethod
+    def flav_to_importance(cls, flav):
         if flav == "tiny":
             return 1
         elif flav == "medium":
@@ -50,6 +51,10 @@ class IntermediateLanguage(BaseModel):
     @classmethod
     def NRES_LIST(cls):
         return ["latency", "avability", "ssl", "firewall", "encrypted_storage"]
+
+    @classmethod
+    def SECURITY_LIST(cls):
+        return ["ssl", "firewall", "encrypted_storage"]
 
     @classmethod
     def RES_LIST(cls):

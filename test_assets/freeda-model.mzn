@@ -22,7 +22,7 @@ array[CompFlavs] of set of Res: Req_cf = [
   {r | r in Res where comReq[cf,r] != worstBounds[r]} | cf in CompFlavs
 ];
 array[Comps,Comps] of set of Res: Req_cc = array2d(Comps, Comps, [
-  {r | r in Res where depReq[c1,c2,r] != worstBounds[r]} | c1 in Comps, 
+  {r | r in Res where depReq[c1,c2,r] != worstBounds[r] \/depReq[c1,c1,r] != worstBounds[r]} | c1 in Comps, 
                                                            c2 in Comps
 ]);
 array[Nodes] of set of Res: Req_nr = [
@@ -84,7 +84,7 @@ constraint forall(i in CompFlavs)( D[i,0] = 0 );
 
 % Components that must be deployed
 constraint forall (c in mustComps) (
-  sum (i in Flav[c], j in Nodes)( D[i,j] ) > 0 /\ node[c] > 0
+ node[c] > 0
 );
 
 % Each component is deployed in at most one flavour, on at most one node
@@ -123,7 +123,8 @@ constraint forall(j in Nodes, r in Req_nr[j] where r in CRes) (
 
 % Dependency requirements.
 constraint forall(c in Comps, i in Flav[c], c1 in Uses[I(c,i)], 
-                                             r in Req_cc[c,c1]) (
+                                  r in Req_cc[c,c1]) (
+  D[I(c,i),node[c]] = 1 ->  
   if worstBounds[r] = 0 then
     depReq[c,c1,r] <= linkCap[node[c], node[c1], r]
   else

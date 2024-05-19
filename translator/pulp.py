@@ -31,7 +31,7 @@ class PulpTranslator(SolverTranslator):
 
     def _solve(self):
         self.solver = self._gen_problem()
-        cplex_solver = PULP_CBC_CMD()
+        cplex_solver = PULP_CBC_CMD(msg=False)
         cplex_solver.path = CBC_SOLVER_PATH
         self.solver.solve(cplex_solver)
 
@@ -116,7 +116,7 @@ class PulpTranslator(SolverTranslator):
         self, component, flav, node, component1, flav1, node1
     ):
         self.add_constraint(
-            self.D[(component, flav, node1)]
+            self.D[(component, flav, node)]
             + self.D[(component1, flav1, node1)]
             <= 1
         )

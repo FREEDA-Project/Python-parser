@@ -3,11 +3,9 @@ import random
 from utils import fake, generate_dep,POSSIBILE_REQ_COMP,POSSIBLE_FLAVOURS,POSSIBILE_REQ_DEPENDENCY,POSSIBILE_SECURITY_REQ
 
 def generate_with_n_components(component_number:int):
-    components_name= []
-    while len(components_name) < component_number:
-        word = fake.word()
-        if word not in components_name:
-            components_name.append(word)
+    components_name= list(
+        "component"+ str(i) for i in range(component_number)
+    )
     
     components = {
         name:generate_component(name, components_name) for name in components_name
@@ -131,7 +129,7 @@ def generate_reqirements(component):
             flav_dict[flav] = flav_reqs
     return {
         "common": common,
-        "flavour-speficit": flav_dict
+        "flavour-specific": flav_dict
     }
         
 

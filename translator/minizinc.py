@@ -1,28 +1,17 @@
 from typing import Any, Optional
 from translator.intermediate_language import IntermediateLanguage
 from translator.translator import Translator
-from config import MINIZINC_SOLVER_PATH,MINIZINC_MODEL,MINIZINC_PATH_SOVER_SAVE
+from config import MINIZINC_MODEL,GECODE_PATH
+from datetime import timedelta
 import os
 import subprocess
+from minizinc import Model, Solver, Instance, Status
 
 
 class MiniZinc(Translator):
     def __init__(self, intermediate_language: IntermediateLanguage):
         self.output = ""
         self.intermediate = intermediate_language
-        self.intermediate.res = [
-            "cpu",
-            "ram",
-            "storage",
-            "bwIn",
-            "bwOut",
-            "ssl",
-            "firewall",
-            "encrypted_storage",
-            "availability",
-            "latency",
-        ]
-
         self._add_component()
         self._must_components()
         self._add_flavs()
@@ -225,9 +214,9 @@ class MiniZinc(Translator):
         self.output += "\tendif\n"
         for node_name in self.intermediate.linkCap:
             for node_name2 in self.intermediate.linkCap[node_name]:
-                self.output += (
-                    "elseif ni = " + node_name + " /\\ nj = " + node_name2 + " then\n"
-                )
+                self.output += ( "elseif (ni = " + node_name +  " /\\ nj = " + node_name2 +") "+\
+                                "\\/(ni = " + node_name2 +  " /\\ nj = " + node_name +")" +" then\n")
+
                 capabilities = self.intermediate.linkCap[node_name][node_name2]
                 if len(capabilities) != 0:
                     for i, cap in enumerate(capabilities):
@@ -254,7 +243,7 @@ class MiniZinc(Translator):
                 if flav not in self.intermediate.flav[comp]:
                     self.output += "0,"
                 else:
-                    self.output += str(self.intermediate.flav_to_importance(flav)) + ","
+                    self.output += str(IntermediateLanguage.flav_to_importance(flav)) + ","
             self.output += "% " + comp + "\n"
         self.output += "]);\n"
 
@@ -265,8 +254,8 @@ class MiniZinc(Translator):
     def _dependency_requirement(self):
         self.output += "depReq = array3d(Comps, Comps, Res,[\n"
         if len(self.intermediate.depReq) == 0:
-            self.output += "\tworstBounds[r]\n % may be wrong"
-            self.output += "ci in Comps, cj in Comps, r in Res\n"
+            self.output += "\tworstBounds[r] % may be wrong\n"
+            self.output += "|ci in Comps, cj in Comps, r in Res\n"
         else:
             first = True
             for from_comp in self.intermediate.depReq:
@@ -276,7 +265,8 @@ class MiniZinc(Translator):
                     else:
                         self.output += "else"
                     self.output += (
-                        "if ci = " + from_comp + " /\\ cj = " + to_comp + " then\n"
+                        "if (ci = " + from_comp + " /\\ cj = " + to_comp + ")"+
+                        "\\/ (ci = " + to_comp + " /\\ cj = " + from_comp + ")"+" then\n"
                     )
                     for i, res_name in enumerate(
                         self.intermediate.depReq[from_comp][to_comp]
@@ -301,12 +291,34 @@ class MiniZinc(Translator):
     def to_file_string(self) -> str:
         return self.output
     
-    def solve(self):
-        path =os.path.join(MINIZINC_PATH_SOVER_SAVE, "params.dzn")
-        with open(path, "w") as f:
-            f.write(self.to_file_string())
-        breakpoint() 
-        cmd = f"{MINIZINC_SOLVER_PATH} {MINIZINC_MODEL} {path}"
-        result = subprocess.run(cmd, shell=True, capture_output=True)
-        print(result.stdout)
-        return None
+    def _solve(self):
+        model = Model()
+
+        model.add_file(MINIZINC_MODEL)
+
+        model.add_string(self.to_file_string())
+        
+
+        solver = Solver.lookup('gecode')
+        
+        solver.executable = GECODE_PATH
+
+        instance = Instance(solver, model)
+        
+
+
+        result = instance.solve(timeout=timedelta(seconds=5))
+        if result.status == Status.OPTIMAL_SOLUTION:
+            i = 1
+            solution = []
+            for component_name in self.intermediate.comps:
+                for flav_name in self.flav:
+                    if flav_name in self.intermediate.flav[component_name]:
+                        for j,node in enumerate(self.intermediate.nodes):
+                            if result["D"][i][j+1] == 1:
+                                solution.append(f"{component_name}_{flav_name}_{node}")
+                        i += 1  
+
+            return solution
+        else:
+            return None         

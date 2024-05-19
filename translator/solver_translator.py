@@ -1,5 +1,5 @@
 from translator.translator import Translator
-from abc import abstractclassmethod
+from abc import abstractmethod
 from config import DEBUG
 from translator.intermediate_language import IntermediateLanguage
 
@@ -10,31 +10,31 @@ class SolverTranslator(Translator):
         self.constraints=[]
 
 
-    @abstractclassmethod
+    @abstractmethod
     def _add_at_most_on_flav_and_node(self,conponent):
        pass
 
-    @abstractclassmethod
+    @abstractmethod
     def _add_must_component(self,conponent):
        pass
 
-    @abstractclassmethod
+    @abstractmethod
     def _add_deploy_used_component(self,conponent,flav,use):
        pass
 
-    @abstractclassmethod
+    @abstractmethod
     def _add_total(self,budget,all_buget):
         pass
 
-    @abstractclassmethod
+    @abstractmethod
     def _add_impossibile_deploy(self,component,flav,node):
         pass
     
-    @abstractclassmethod
+    @abstractmethod
     def _add_comulative_constaint(self,val,component_requirements):
         pass
 
-    @abstractclassmethod
+    @abstractmethod
     def _add_impossibile_combination(self,component,flav,node,component1,flav1,node1):
         pass
 
@@ -113,25 +113,30 @@ class SolverTranslator(Translator):
         # 1.3.2
         if DEBUG:
             print(" --- link requirements")
+        impossible_combinations = set()
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for use in self.intermediate.uses[component][flav]:
                     for uses_flav in self.intermediate.flav[use]:
                         for req, val in self.intermediate.get_dep_req(component, use):
                             val = self._transform_requirements(req, val)
-                            for i1, node1 in enumerate(self.intermediate.nodes):
-                                for i2, node2 in enumerate(self.intermediate.nodes):
-                                    if i1 >= i2:
-                                        continue
+                            for  node1 in (self.intermediate.nodes):
+                                for  node2 in (self.intermediate.nodes):
                                     link_cap = self.intermediate.get_link_cap(node1, node2)
                                     if link_cap is None or req not in link_cap:
                                         continue
                                     linkCapVal = self._transform_requirements(
                                         req, link_cap[req]
                                     )
-                                    if not (val < linkCapVal):  # per alcuni deve essere maggiore
-                                        self._add_impossibile_combination(component,flav,node1,use,uses_flav,node2)
-
+                                    if not (val <= linkCapVal): 
+                                        impossible_combinations.add((component,flav,node1,use,uses_flav,node2))
+                                
+                                if 'aviability' in self.intermediate.nodeCap[node1]:
+                                    link_cap = self.intermediate.get_link_cap(node1, node1)['aviability']
+                                    if link_cap is not None and not (val <= link_cap):
+                                        impossible_combinations.add((component,flav,node1,use,uses_flav,node1))
+        for component,flav,node1,use,uses_flav,node2 in impossible_combinations:
+            self._add_impossibile_combination(component,flav,node1,use,uses_flav,node2)
         # 1.3.3
         if DEBUG:
             print(" --- budget requirements")
@@ -159,7 +164,7 @@ class SolverTranslator(Translator):
         self._add_total(self.intermediate.budget_carbon,total_cons)
         self._add_total(self.intermediate.budget_cost,total_cost)
 
-    @abstractclassmethod
+    @abstractmethod
     def _add_boolean_variabile(self,component,flavour,node):
         pass
 
@@ -170,7 +175,7 @@ class SolverTranslator(Translator):
                     self._add_boolean_variabile(component,flavour,node)
 
 
-    @abstractclassmethod
+    @abstractmethod
     def _add_objective(self, component, flav, node,val):
         pass
     
@@ -178,7 +183,7 @@ class SolverTranslator(Translator):
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for node in self.intermediate.nodes:
-                    val = self.intermediate.flav_to_importance(flav)
+                    val = IntermediateLanguage.flav_to_importance(flav)
                     self._add_objective(
                         component, flav, node,val
                     )

@@ -7,6 +7,7 @@ from translator.translator import Translator
 from translator.minizinc import MiniZinc
 import argparse
 from loader import load_application, load_infrastructure
+import datetime
 
 from tqdm import tqdm
 from translator.pulp import PulpTranslator
@@ -46,6 +47,7 @@ def get_translator(name,intermidiate):
     return translator_class(intermediate_language=intermidiate)
 
 def banchmark(dir_com,dir_inf):
+    SOLVERS = ["minizinc", "pulp", "z3"]
     os.makedirs("output", exist_ok=True)
     if  os.path.isdir(dir_com) and os.path.isdir(dir_inf):
         dir_components = list(map(lambda x : os.path.join(dir_com,x),os.listdir(dir_com)))
@@ -56,35 +58,40 @@ def banchmark(dir_com,dir_inf):
     else:
         raise Exception("Invalid input")
     
-    def check_equal_outputs(output1,output2):
+    def check_equal_outputs(outputs:list[str]|None):
         def trim(st):
             # a string like 'a_b_c' should become "a_b"
             st = st.split("_")
-            return "_".join(st[:-1])
-        if output1 is not None and output2 is not None:
-            o1 = map(trim, outputs[0][0])
-            o2 = map( trim , outputs[1][0])
-            if set(output1[0]) != set(output2[0]):
+            return IntermediateLanguage.flav_to_importance(st[1])
+        
+        count_null= sum(map(lambda x: 1 if x is None else 0, outputs))
+        if count_null>0 :
+            return count_null == len(outputs)
+        
+        outputs = list(sum(map(trim,i)) for i in outputs)
+        # check if all set are equal
+        for i in outputs:
+            if i != outputs[0]:
                 return False
-        elif output1 is None and output2 is None:
-            return True
-        else:
-            return False
         return True
 
     exceptions = []
-    outputs = []         
     times = []
-    for comp in tqdm(dir_components):
-        for inf in tqdm(dir_infrastructure):
-            for output_format in [  "z3","pulp"]:
-                intermediate = load_to_intermidiate_language(comp, inf)
+    for comp in (dir_components):
+        for inf in (dir_infrastructure):
+            current_output = []
+            intermediate = load_to_intermidiate_language(comp, inf)
+            print("Comp:",len(intermediate.comps),"Inf:",len(intermediate.nodes))
+            for output_format in SOLVERS:
                 translator = get_translator(output_format, intermediate)
                 out,time = translator.solve()
-                outputs.append(out)
+                if 5 > time:
+                    current_output.append(out)
+                print("-----",out,time,output_format)
                 times.append((output_format,time,len(intermediate.comps),len(intermediate.nodes)))
-            if not check_equal_outputs(outputs[0],outputs[1]):
-                exceptions.append((comp,inf,outputs[0],outputs[1]))   
+                
+            if not check_equal_outputs(current_output):
+                exceptions.append((comp,inf,current_output))   
 
     with open("output/benchmark.json", "w") as f:
         f.write(json.dumps(times))

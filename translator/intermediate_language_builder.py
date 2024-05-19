@@ -67,8 +67,11 @@ class IntermediateLanguageBuilder:
 
     def _extract_proprieties_capability(self, map, prop: Capability | Requirement):
         if isinstance(prop.value, list) and prop.name == "security":
+            for flav in IntermediateLanguage.SECURITY_LIST():
+                map[flav] = 0
             for flav in prop.value:
                 map[flav] = 1
+            
         elif (
             isinstance(prop.value, int) or prop.name in IntermediateLanguage.RES_LIST()
         ):
@@ -134,6 +137,7 @@ class IntermediateLanguageBuilder:
 
     def _extract_dependency_requirements(self) -> dict[str, dict[str, dict[str, Any]]]:
         depReq = {}
+
         for source, deps in self.app.dependencies.items():
             depReq[source] = {}
             for target, dep in deps.items():

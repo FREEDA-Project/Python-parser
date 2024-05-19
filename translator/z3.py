@@ -15,6 +15,7 @@ class Z3Translator(SolverTranslator):
         self.intermediate = intermediate_language
 
     def to_file_string(self) -> str:
+        print(self._solve())
         return self.gen_problem().model()
     
     def gen_problem(self):
@@ -26,6 +27,7 @@ class Z3Translator(SolverTranslator):
         opt = Optimize()
         self.objective()
         opt.maximize(Sum(self.objective_f))
+
         opt.add(self.constraints)
         return opt
     
@@ -36,6 +38,9 @@ class Z3Translator(SolverTranslator):
             # get the variable that are true
             return [str(k) for k in model if model[k]]
         else:
+            # print non satisfiable constraints
+            for i in opt.unsat_core():
+                print(i)
             return None
         
 
@@ -122,15 +127,13 @@ class Z3Translator(SolverTranslator):
             val * self.D[(component, flav, node)]
         )
 
-# TO debug
-# for i,c in enumerate(self.constraints):
-#    opt.assert_and_track(c, str(i))
+        # for i,c in enumerate(self.constraints):
+        #    opt.assert_and_track(c, str(c))
 
-# for component in self.intermediate.comps:
-#    for flav in self.intermediate.flav[component]:
-#        for node in self.intermediate.nodes:
-#            if (flav=='medium' and component=='frontend' and node =='n3')\
-#            or (flav=='tiny' and component=='backend' and node=='n3'):
-#                opt.add(D[(component, flav, node)] == True)
-#            else:
-#                opt.add(D[(component, flav, node)] == False)
+        # for component in self.intermediate.comps:
+        #     for flav in self.intermediate.flav[component]:
+        #         for node in self.intermediate.nodes:
+        #             if f"{component}_{flav}_{node}" in ['hour_large_node3', 'life_large_node4', 'ok_large_node1', 'also_large_node1', 'watch_large_node5']:
+        #                 opt.add(self.D[(component, flav, node)] == True)
+        #             else:
+        #                 opt.add(self.D[(component, flav, node)] == False)

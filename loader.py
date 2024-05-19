@@ -37,7 +37,6 @@ def _load_requirements(data: dict[str, Any], app: Application):
                     flavour_name, req_name, req_value, req_soft
                 )
 
-    # load dependency
     for from_component, data_extracted in data["requirements"]["dependencies"].items():
         for to_component, requirements in data_extracted.items():
             app.add_dependency(from_component, to_component)
