@@ -23,7 +23,7 @@ class SMTTranslator(SolverTranslator):
 
     def to_file_string(self) -> str:
         solver = self.gen_problem() 
-        return solver.to_smt2()
+        return solver.z3.to_smt2()
 
     def gen_problem(self):
         self.D = {}

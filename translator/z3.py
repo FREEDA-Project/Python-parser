@@ -15,8 +15,8 @@ class Z3Translator(SolverTranslator):
         self.intermediate = intermediate_language
 
     def to_file_string(self) -> str:
-        print(self._solve())
-        return self.gen_problem().model()
+        opt= self.gen_problem()
+        return str(opt)
     
     def gen_problem(self):
         self.D={}
