@@ -50,8 +50,11 @@ class IntermediateLanguage(BaseModel):
 
     @classmethod
     def NRES_LIST(cls):
-        return ["latency", "avability", "ssl", "firewall", "encrypted_storage"]
+        return ["latency", "availability", "ssl", "firewall", "encrypted_storage"]
 
+    @classmethod
+    def INTER_NODE(cls):
+        return "availability"
     @classmethod
     def SECURITY_LIST(cls):
         return ["ssl", "firewall", "encrypted_storage"]

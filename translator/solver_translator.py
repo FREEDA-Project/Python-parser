@@ -131,10 +131,13 @@ class SolverTranslator(Translator):
                                     if not (val <= linkCapVal): 
                                         impossible_combinations.add((component,flav,node1,use,uses_flav,node2))
                                 
-                                if 'aviability' in self.intermediate.nodeCap[node1]:
-                                    link_cap = self.intermediate.get_link_cap(node1, node1)['aviability']
+
+                                inter_node = self.intermediate.INTER_NODE()                 
+                                if inter_node in self.intermediate.nodeCap[node1]:
+                                    link_cap = self.intermediate.get_link_cap(node1, node1)[inter_node]
                                     if link_cap is not None and not (val <= link_cap):
                                         impossible_combinations.add((component,flav,node1,use,uses_flav,node1))
+
         for component,flav,node1,use,uses_flav,node2 in impossible_combinations:
             self._add_impossibile_combination(component,flav,node1,use,uses_flav,node2)
         # 1.3.3
