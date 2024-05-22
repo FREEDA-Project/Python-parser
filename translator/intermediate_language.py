@@ -45,18 +45,18 @@ class IntermediateLanguage(BaseModel):
         return min(res, key=len)
 
     @classmethod
-    def CRES_LIST(cls):
+    def CRES_LIST(cls)-> list[str]:
         return ["cpu", "ram", "storage", "bwIn", "bwOut"]
 
     @classmethod
-    def NRES_LIST(cls):
+    def NRES_LIST(cls)-> list[str]:
         return ["latency", "availability", "ssl", "firewall", "encrypted_storage"]
 
     @classmethod
-    def INTER_NODE(cls):
+    def INTER_NODE(cls) -> str:
         return "availability"
     @classmethod
-    def SECURITY_LIST(cls):
+    def SECURITY_LIST(cls)-> list[str]:
         return ["ssl", "firewall", "encrypted_storage"]
 
     @classmethod
@@ -80,6 +80,6 @@ class IntermediateLanguage(BaseModel):
         
         return all
 
-    @property
-    def minimized_res(self):
-        return set('latency')
+    @classmethod
+    def MINIMIZED_RES(self)->set:
+        return list('latency')

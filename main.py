@@ -1,12 +1,14 @@
 import yaml
 import json
 import os
+from banchmark import benchmark
 from translator.intermediate_language import IntermediateLanguage
 from translator.intermediate_language_builder import IntermediateLanguageBuilder
 from translator.translator import Translator
 from translator.minizinc import MiniZinc
 import argparse
 from loader import load_application, load_infrastructure
+from translator.return_enum import ResultEnum
 import datetime
 
 from tqdm import tqdm
@@ -46,56 +48,6 @@ def get_translator(name,intermidiate):
             raise Exception("Invalid output format")
     return translator_class(intermediate_language=intermidiate)
 
-def banchmark(dir_com,dir_inf):
-    SOLVERS = ["minizinc", "pulp", "z3"]
-    os.makedirs("output", exist_ok=True)
-    if  os.path.isdir(dir_com) and os.path.isdir(dir_inf):
-        dir_components = list(map(lambda x : os.path.join(dir_com,x),os.listdir(dir_com)))
-        dir_infrastructure = list(map(lambda x : os.path.join(dir_inf,x),os.listdir(dir_inf)))
-    elif os.path.isfile(dir_com) and os.path.isfile(dir_inf):
-        dir_components = [dir_com]
-        dir_infrastructure = [dir_inf]
-    else:
-        raise Exception("Invalid input")
-    
-    def check_equal_outputs(outputs:list[str]|None):
-        def trim(st):
-            # a string like 'a_b_c' should become "a_b"
-            st = st.split("_")
-            return IntermediateLanguage.flav_to_importance(st[1])
-        
-        count_null= sum(map(lambda x: 1 if x is None else 0, outputs))
-        if count_null>0 :
-            return count_null == len(outputs)
-        
-        outputs = list(sum(map(trim,i)) for i in outputs)
-        # check if all set are equal
-        for i in outputs:
-            if i != outputs[0]:
-                return False
-        return True
-
-    exceptions = []
-    times = []
-    for comp in (dir_components):
-        for inf in (dir_infrastructure):
-            current_output = []
-            intermediate = load_to_intermidiate_language(comp, inf)
-            print("Comp:",len(intermediate.comps),"Inf:",len(intermediate.nodes))
-            for output_format in SOLVERS:
-                translator = get_translator(output_format, intermediate)
-                out,time = translator.solve()
-                if 5 > time:
-                    current_output.append(out)
-                print("-----",out,time,output_format)
-                times.append((output_format,time,len(intermediate.comps),len(intermediate.nodes)))
-                
-            if not check_equal_outputs(current_output):
-                exceptions.append((comp,inf,current_output))   
-
-    with open("output/benchmark.json", "w") as f:
-        f.write(json.dumps(times))
-    print(exceptions)
 
 
 
@@ -117,7 +69,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.banchmark:
-        banchmark(args.components, args.infrastructure)
+        benchmark(args.components, args.infrastructure)
         exit(0)
     else: 
         intermediate = load_to_intermidiate_language(args.components, args.infrastructure)

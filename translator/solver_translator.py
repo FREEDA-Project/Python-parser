@@ -3,6 +3,8 @@ from abc import abstractmethod
 from config import DEBUG
 from translator.intermediate_language import IntermediateLanguage
 
+
+
 class SolverTranslator(Translator):
 
     def __init__(self, intermediate_language: IntermediateLanguage) -> None:
@@ -39,7 +41,7 @@ class SolverTranslator(Translator):
         pass
 
     def _transform_requirements(self, name, value):
-        if name in self.intermediate.minimized_res:
+        if name == "latency":
             return -value
         return value
 
@@ -109,6 +111,7 @@ class SolverTranslator(Translator):
                         )
                 val = self._transform_requirements(req, val)
                 self._add_comulative_constaint(val,component_requirements)
+                
 
         # 1.3.2
         if DEBUG:
@@ -128,15 +131,17 @@ class SolverTranslator(Translator):
                                     linkCapVal = self._transform_requirements(
                                         req, link_cap[req]
                                     )
+
                                     if not (val <= linkCapVal): 
                                         impossible_combinations.add((component,flav,node1,use,uses_flav,node2))
                                 
 
                                 inter_node = self.intermediate.INTER_NODE()                 
                                 if inter_node in self.intermediate.nodeCap[node1]:
-                                    link_cap = self.intermediate.get_link_cap(node1, node1)[inter_node]
+                                    link_cap = self.intermediate.nodeCap[node1][inter_node]
                                     if link_cap is not None and not (val <= link_cap):
                                         impossible_combinations.add((component,flav,node1,use,uses_flav,node1))
+
 
         for component,flav,node1,use,uses_flav,node2 in impossible_combinations:
             self._add_impossibile_combination(component,flav,node1,use,uses_flav,node2)

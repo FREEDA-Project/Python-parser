@@ -3,8 +3,7 @@ from translator.intermediate_language import IntermediateLanguage
 from translator.translator import Translator
 from config import MINIZINC_MODEL,GECODE_PATH
 from datetime import timedelta
-import os
-import subprocess
+from translator.return_enum import ResultEnum
 from minizinc import Model, Solver, Instance, Status
 
 
@@ -304,10 +303,8 @@ class MiniZinc(Translator):
         solver.executable = GECODE_PATH
 
         instance = Instance(solver, model)
-        
 
-
-        result = instance.solve(timeout=timedelta(seconds=5))
+        result = instance.solve()#timeout=timedelta(seconds=5))
         if result.status == Status.OPTIMAL_SOLUTION:
             i = 1
             solution = []
@@ -319,6 +316,6 @@ class MiniZinc(Translator):
                                 solution.append(f"{component_name}_{flav_name}_{node}")
                         i += 1  
 
-            return solution
+            return ResultEnum.Sat,solution
         else:
-            return None         
+            return ResultEnum.NonSat,None         

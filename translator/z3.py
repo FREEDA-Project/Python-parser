@@ -3,7 +3,9 @@ from z3 import (
     Optimize,
     Sum,
     sat,
+    Not
 )
+from translator.return_enum import ResultEnum
 from config import DEBUG
 from translator.intermediate_language import IntermediateLanguage
 from translator.solver_translator import SolverTranslator
@@ -35,19 +37,10 @@ class Z3Translator(SolverTranslator):
         opt = self.gen_problem()
         if opt.check() == sat:
             model = opt.model()
-            # get the variable that are true
-            return [str(k) for k in model if model[k]]
+            return ResultEnum.Sat, [str(k) for k in model if model[k]]
         else:
-            # print non satisfiable constraints
-            for i in opt.unsat_core():
-                print(i)
-            return None
+            return ResultEnum.NonSat, None
         
-
-    def _transform_requirements(self, name, value):
-        if name == "latency":
-            return -value
-        return value
 
 
     def _add_at_most_on_flav_and_node(self, component):
@@ -91,7 +84,7 @@ class Z3Translator(SolverTranslator):
         )
 
     def _add_impossibile_deploy(self, component, flav, node):
-        self.add_constraint(self.D[(component,flav,node)]==False)
+        self.add_constraint(Not(self.D[(component,flav,node)]))
 
     def _add_comulative_constaint(self, val, component_requirements):
         self.add_constraint(

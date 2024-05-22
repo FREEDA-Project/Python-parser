@@ -10,11 +10,10 @@ from pulp import (
 
 from config import CBC_SOLVER_PATH
 from translator.intermediate_language import IntermediateLanguage
+from translator.return_enum import ResultEnum
 from translator.solver_translator import SolverTranslator
 
 class PulpTranslator(SolverTranslator):
-    def __init__(self, intermediate_language: IntermediateLanguage):
-        self.intermediate = intermediate_language
 
     def _gen_problem(self) -> LpProblem:
         self.solver = LpProblem("Solver", LpMaximize)
@@ -34,10 +33,9 @@ class PulpTranslator(SolverTranslator):
         cplex_solver = PULP_CBC_CMD(msg=False)
         cplex_solver.path = CBC_SOLVER_PATH
         self.solver.solve(cplex_solver)
-
         if LpStatus[self.solver.status] == "Infeasible":
-            return None
-        return list(
+            return ResultEnum.NonSat, None
+        return ResultEnum.Sat,list(
             map(
                 lambda x: str(x),
                 filter(lambda x: x.varValue == 1, self.solver.variables()),
@@ -50,13 +48,8 @@ class PulpTranslator(SolverTranslator):
     def write_to_file(self, file_path: str):
         self._gen_problem().writeMPS(file_path)
 
-    def _transform_requirements(self, name, value):
-        if name == "latency":
-            return -value
-        return value
 
    
-
     def _add_at_most_on_flav_and_node(self, component):
         self.add_constraint(
             lpSum(
