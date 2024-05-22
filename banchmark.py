@@ -13,7 +13,7 @@ import datetime
 
 from tqdm import tqdm
 
-SOLVERS = [ "pulp", "z3",'smt']  # "minizinc"
+SOLVERS = [ "pulp", "z3",'smt',  "minizinc"]
 
 
 def check_equal_outputs(outputs: tuple[ResultEnum, list[str] | None]):
@@ -58,6 +58,8 @@ def benchmark(dir_com, dir_inf):
         dir_infrastructure = list(
             map(lambda x: os.path.join(dir_inf, x), os.listdir(dir_inf))
         )
+        dir_components.sort()
+        dir_infrastructure.sort()
     elif os.path.isfile(dir_com) and os.path.isfile(dir_inf):
         dir_components = [dir_com]
         dir_infrastructure = [dir_inf]
@@ -91,7 +93,6 @@ def benchmark(dir_com, dir_inf):
             if not check_equal_outputs(current_output):
                 exceptions.append((comp, inf, current_output))
             outputs.extend( list(zip(SOLVERS, current_output)))
-            print(outputs)
 
     # get random 10 digit
     digit = random.randint(1000, 9999)
@@ -103,7 +104,6 @@ def benchmark(dir_com, dir_inf):
     with open(f"output/{digit}_output.json", "w") as f:
         # translate Result enum to string
         f.write(json.dumps(outputs,cls=CustomEncoder))
-    print(f"id : {digit}")
     print(exceptions)
 
 # Define a custom JSON encoder

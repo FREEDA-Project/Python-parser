@@ -7,7 +7,6 @@ pkgs.mkShell {
     pkgs.python3Packages.z3
     pkgs.z3
     pkgs.cbc
-    pkgs.gecode
     pkgs.ruff
   ];
 
