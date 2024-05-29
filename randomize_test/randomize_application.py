@@ -43,7 +43,7 @@ def generate_component(name,otherComponents):
         used = []
         for flav in POSSIBLE_FLAVOURS:
             if flav in flavs:
-                if random.random() < 0.5:
+                if random.random() < 0.3:
                     gamma_value = int(random.gammavariate(1, 2))
                     if gamma_value >= len(otherComponents):
                         gamma_value = len(otherComponents)    
