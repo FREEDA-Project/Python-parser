@@ -9,6 +9,11 @@ class MiniZinc(Translator):
     def __init__(self, intermediate_language: IntermediateLanguage):
         self.output = ""
         self.intermediate = intermediate_language
+        self.compFlavs = [
+            (c, f)
+            for c in self.intermediate.comps
+            for f in self.intermediate.flav[c]
+        ]
         self._add_component()
         self._must_components()
         self._add_flavs()
@@ -99,14 +104,16 @@ class MiniZinc(Translator):
         self.output += "];\n"
 
     def _add_uses(self):
-        self.output += "Uses = ["
-        uses = []
-        for key in self.intermediate.comps:
-            for val in self.flav:
-                if val in self.intermediate.flav[key]:
-                    uses.append("{" + ",".join(self.intermediate.uses[key][val]) + "}")
-        self.output += ",".join(uses)
-        self.output += "];\n"
+        self.output += "Uses = array2d(CompFlavs, CompFlavs, [\n\t"
+        self.output += "\t".join([
+            ", ".join([
+                "1" if (c2, f2) in self.intermediate.uses[c1][f1] else "0"
+                for (c2, f2) in self.compFlavs
+            ]) + ",\n"
+            for (c1, f1) in self.compFlavs
+        ])
+
+        self.output += "]);\n"
 
     def _max_bound(self):
         self.output += "MAX_BOUND = 1000000;\n"
@@ -249,20 +256,16 @@ class MiniZinc(Translator):
         self.output += "consWeight = 1;\n"
 
     def _dependency_requirement(self):
-        self.output += "depReq = array3d(Comps, Comps, Res,[\n"
+        self.output += "depReq = array4d(Comps, Flavs, Comps, Res, [\n"
         if len(self.intermediate.depReq) == 0:
             self.output += "\tworstBounds[r] % may be wrong\n"
             self.output += "|ci in Comps, cj in Comps, r in Res\n"
         else:
-            first = True
+            self.output += "if not(i in Flav[ci]) then\n    worstBounds[r]\n"
             for from_comp in self.intermediate.depReq:
                 for to_comp in self.intermediate.depReq[from_comp]:
-                    if first:
-                        first = False
-                    else:
-                        self.output += "else"
                     self.output += (
-                        "if (ci = " + from_comp + " /\\ cj = " + to_comp + ")"+
+                        "elseif (ci = " + from_comp + " /\\ cj = " + to_comp + ")"+
                         "\\/ (ci = " + to_comp + " /\\ cj = " + from_comp + ")"+" then\n"
                     )
                     for i, res_name in enumerate(
@@ -282,7 +285,7 @@ class MiniZinc(Translator):
                     self.output += "\n"
             self.output += "else\n"
             self.output += "\tworstBounds[r]\n"
-            self.output += "endif | ci in Comps, cj in Comps, r in Res\n"
+            self.output += "endif | ci in Comps, i in Flavs, cj in Comps, r in Res\n"
         self.output += "]);\n"
 
     def to_file_string(self) -> str:

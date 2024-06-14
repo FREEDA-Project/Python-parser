@@ -2,25 +2,40 @@ name: web_application
 components:
   frontend:
     type: service
+    must: true
     flavours:
       large:
-        uses:  [ backend ] 
+        uses:
+          - component: backend
+            flavour: tiny
+        importance: 7
       medium:
-        uses:  [ backend ]
+        uses:
+          - component: backend
+            flavour: tiny
+        importance: 0
   backend:
     type: service
     flavours:
       large:
-        uses:  [ database ] 
+        uses:
+          - component: database
+            flavour: large
+        importance: 3
       medium:
-        uses:  [ database ] 
+        uses:
+          - component: database
+            flavour: large
+        importance: 2
       tiny:
-        uses:  [ ]
+        uses: []
+        importance: 1
   database:
     type: database
     flavours:
       large:
-        uses:  [ ]
+        uses:  []
+        importance: 2
 requirements:
   components:
     frontend:

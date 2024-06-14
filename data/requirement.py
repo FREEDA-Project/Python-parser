@@ -7,4 +7,4 @@ class Requirement(BaseModel):
     soft: bool
 
 class FlavourRequirement(Requirement):
-    flavour:str
+    flavour: str

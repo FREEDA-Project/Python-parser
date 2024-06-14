@@ -7,10 +7,18 @@ def _load_components(data: dict[str, Any], app: Application):
         component_type = component_data["type"]
         must = component_data.get("must", False)
         app.add_component(name=component_name, component_type=component_type, must=must)
-        # adding flavours
-        for flavour, uses in component_data.get("flavours", {}).items():
-            app.components[component_name].add_flavour(flavour, uses["uses"])
+        for flavour_name, flavour_data in component_data.get("flavours", {}).items():
+            uses = {
+                (u["component"], u["flavour"])
+                if isinstance(u, dict) else (u, "common")
+                for u in flavour_data["uses"]
+            }
 
+            app.components[component_name].add_flavour(
+                flavour_name,
+                uses,
+                flavour_data["importance"],
+            )
 
 def _load_requirements(data: dict[str, Any], app: Application):
     # adding requirements to each component

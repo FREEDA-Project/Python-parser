@@ -51,27 +51,17 @@ class SolverTranslator(Translator):
             self.constraints.append(constraint)
 
     def generate_contraints(self):
-        # 1.2
-        if DEBUG:
-            print(" --- deploy at most one flavour of a component on a node")
         for component in self.intermediate.comps:
             self._add_at_most_on_flav_and_node(component)
-        # 1.3
-        if DEBUG:
-            print(" --- must component")
+
         for must in self.intermediate.mustComp:
             self._add_must_component(must)
 
-        if DEBUG:
-            print(" --- deploy used components ")
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for use in self.intermediate.uses[component][flav]:
                     self._add_deploy_used_component(component,flav,use)
 
-        # 1.3.1
-        if DEBUG:
-            print(" --- component requirements")
         not_compatible=set()
         # this could be done before creating the variabile actually, and skip the cration of this variabile
         for component in self.intermediate.comps:
@@ -89,9 +79,6 @@ class SolverTranslator(Translator):
         for component,flav,node in not_compatible:
             self._add_impossibile_deploy(component,flav,node)
 
-        # 1.3.1
-        if DEBUG:
-            print(" --- comulative requirements")
         for node in self.intermediate.nodes:
             for req, val in self.intermediate.nodeCap[node].items():
                 if req not in self.intermediate.CRES_LIST():
@@ -109,9 +96,6 @@ class SolverTranslator(Translator):
                 val = self._transform_requirements(req, val)
                 self._add_comulative_constaint(val,component_requirements)
 
-        # 1.3.2
-        if DEBUG:
-            print(" --- link requirements")
         impossible_combinations = set()
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
@@ -119,8 +103,8 @@ class SolverTranslator(Translator):
                     for uses_flav in self.intermediate.flav[use]:
                         for req, val in self.intermediate.get_dep_req(component, use):
                             val = self._transform_requirements(req, val)
-                            for  node1 in (self.intermediate.nodes):
-                                for  node2 in (self.intermediate.nodes):
+                            for node1 in (self.intermediate.nodes):
+                                for node2 in (self.intermediate.nodes):
                                     link_cap = self.intermediate.get_link_cap(node1, node2)
                                     if link_cap is None or req not in link_cap:
                                         continue
@@ -140,9 +124,7 @@ class SolverTranslator(Translator):
 
         for component,flav,node1,use,uses_flav,node2 in impossible_combinations:
             self._add_impossibile_combination(component,flav,node1,use,uses_flav,node2)
-        # 1.3.3
-        if DEBUG:
-            print(" --- budget requirements")
+
         total_cost = []
         total_cons = []
 

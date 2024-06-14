@@ -1,15 +1,13 @@
 from typing import Any
 from pydantic import BaseModel
-import itertools
-
-from translator.get_source_nodes import get_roots
 
 class IntermediateLanguage(BaseModel):
     comps: set[str]
+    mustComp: set[str]
     nodes: set[str]
     res: set[str]
     flav: dict[str, set[str]]
-    uses: dict[str, dict[str, set[str]]]
+    uses: dict[str, dict[str, set[tuple[str, str]]]]
     comReq: dict[str, dict[str, dict[str, Any]]]
     depReq: dict[str, dict[str, dict[str, Any]]]
     budget_cost: float
@@ -29,33 +27,20 @@ class IntermediateLanguage(BaseModel):
         else:
             return 0
 
-    @property
-    def mustComp(self) -> set[str]:
-        # split uses by falvor
-        flavs = set(itertools.chain.from_iterable(self.uses.values()))
-        res = []
-        for flav in flavs:
-            graph = {comp: self.uses[comp][flav] for comp in self.uses}
-            res.append(get_roots(graph))
-
-        # get the roots with less components
-        if len(res) == 0:
-            raise ValueError("A component must be use")
-        return min(res, key=len)
-
     @classmethod
-    def CRES_LIST(cls)-> list[str]:
+    def CRES_LIST(cls) -> list[str]:
         return ["cpu", "ram", "storage", "bwIn", "bwOut"]
 
     @classmethod
-    def NRES_LIST(cls)-> list[str]:
+    def NRES_LIST(cls) -> list[str]:
         return ["latency", "availability", "ssl", "firewall", "encrypted_storage"]
 
     @classmethod
     def INTER_NODE(cls) -> str:
         return "availability"
+
     @classmethod
-    def SECURITY_LIST(cls)-> list[str]:
+    def SECURITY_LIST(cls) -> list[str]:
         return ["ssl", "firewall", "encrypted_storage"]
 
     @classmethod
@@ -69,12 +54,12 @@ class IntermediateLanguage(BaseModel):
             return self.linkCap[node2][node1]
         return None
 
-    def get_dep_req(self,component, use):
+    def get_dep_req(self, component, use):
         all = []
         if component in self.depReq and use in self.depReq[component]:
             all = list(self.depReq[component][use].items())
 
-        if use in self.depReq and  component in self.depReq[use]:
+        if use in self.depReq and component in self.depReq[use]:
             all.extend(list(self.depReq[use][component].items()))
 
         return all

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Tuple, List
 from data.application import Application
 import itertools
 
@@ -7,41 +7,56 @@ from data.requirement import Requirement
 from data.capability import Capability
 from translator.intermediate_language import IntermediateLanguage
 
-
 class IntermediateLanguageBuilder:
     def __init__(self, app: Application, infrastructure: Infrastructure) -> None:
         self.app = app
         self.infrastructure = infrastructure
 
-    def build(self) -> IntermediateLanguage:
-        # Be careful with the order of the following lines
-        # cause there are dependencies between them the are
-        # not explicit in the code
-        self.comps = self._extract_components()
-        self.flav = self._extract_flav()
-        self.flavs = self._extract_flavours()
-        self.uses = self._extract_uses()
-        self.nodes = self._extract_nodes()
+        self.flavours = self._extract_flavours()
         self.comReq = self._extract_component_requirements()
         self.depReq = self._extract_dependency_requirements()
         self.linkCap = self._extract_link_cap()
         self.nodeCap = self._extract_node_cap()
-        self.cost = self._extract_cost()
-        self.res = self._extract_res()
+
+    def build(self) -> IntermediateLanguage:
         return IntermediateLanguage(
-            comps=self.comps,
-            nodes=self.nodes,
-            flav=self.flav,
-            uses=self.uses,
+            comps=self.get_components(),
+            mustComp=self.get_must_components(),
+            flav=self.flavours,
+            nodes=self._extract_nodes(),
+            uses=self._extract_uses(),
             budget_carbon=self.app.budget.carbon,
             budget_cost=self.app.budget.cost,
-            cost=self.cost,
+            cost=self._extract_cost(),
             comReq=self.comReq,
             depReq=self.depReq,
             linkCap=self.linkCap,
             nodeCap=self.nodeCap,
-            res=self.res,
+            res=self._extract_res(),
         )
+
+    def _extract_flavours(self) -> dict[str, set[str]]:
+        flavour = {}
+        for c in self.app.components:
+            flavour[c] = set(self.app.components[c].flavours_uses.keys())
+        return flavour
+
+    def _extract_uses(self) -> dict[str, dict[str, set[tuple[str, str]]]]:
+        result = {
+            component: self.app.components[component].flavours_uses
+            for component in self.flavours.keys()
+        }
+        return result
+
+    def _extract_nodes(self) -> set[str]:
+        return set(self.infrastructure.nodes.keys())
+
+    def get_must_components(self) -> set[str]:
+        return {
+            self.app.components[c].name
+            for c in self.get_components()
+            if self.app.components[c].must
+        }
 
     def _extract_res(self):
         res = set()
@@ -49,10 +64,12 @@ class IntermediateLanguageBuilder:
             for flav in node.values():
                 for prop in flav.keys():
                     res.add(prop)
+
         for node in self.depReq.values():
             for flav in node.values():
                 for prop in flav.keys():
                     res.add(prop)
+
         for node in self.nodeCap.values():
             for val in node.keys():
                 res.add(val)
@@ -112,27 +129,6 @@ class IntermediateLanguageBuilder:
                 self._extract_proprieties_capability(linkCap[source][target], cap)
         return linkCap
 
-    def _extract_nodes(self) -> set[str]:
-        return set(self.infrastructure.nodes.keys())
-
-    def _extract_uses(self) -> dict[str, dict[str, set[str]]]:
-        uses = {}
-        for comp in self.comps:
-            for flav in self.flavs:
-                if comp not in uses:
-                    uses[comp] = {}
-                uses[comp][flav] = set(self.app.components[comp].flavours.get(flav, []))
-        return uses
-
-    def _extract_components(self) -> set[str]:
-        return set(self.app.components.keys())
-
-    def _extract_flav(self) -> dict[str, set[str]]:
-        flav = {}
-        for comp in self.comps:
-            flav[comp] = set(self.app.components[comp].flavours.keys())
-        return flav
-
     def _extract_dependency_requirements(self) -> dict[str, dict[str, dict[str, Any]]]:
         depReq = {}
 
@@ -148,7 +144,9 @@ class IntermediateLanguageBuilder:
         comReq = {}
 
         def _set_requirement(
-            component: str, flavours: list[str], requirements: list[Requirement]
+            component: str,
+            flavours: list[str],
+            requirements: list[Requirement]
         ):
             for flav, req in zip(flavours, requirements):
                 if flav not in comReq[component]:
@@ -159,7 +157,7 @@ class IntermediateLanguageBuilder:
             if len(component.requirements) > 0:
                 comReq[component.name] = {}
 
-            for req, req_data in component.requirements.items():
+            for _, req_data in component.requirements.items():
                 if isinstance(req_data, list):
                     _set_requirement(
                         component.name,
@@ -169,14 +167,10 @@ class IntermediateLanguageBuilder:
                 else:
                     _set_requirement(
                         component.name,
-                        self.flav[component.name],
-                        [req_data] * len(self.flav[component.name]),
+                        self.flavours[component.name],
+                        [req_data] * len(self.flavours[component.name]),
                     )
         return comReq
 
-    def _extract_flavours(self) -> set[str]:
-        return set(
-            itertools.chain.from_iterable(
-                map(lambda x: x.flavours.keys(), self.app.components.values())
-            )
-        )
+    def get_components(self) -> set[str]:
+        return set(self.flavours.keys())
