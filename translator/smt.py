@@ -1,22 +1,16 @@
 from pysmt.shortcuts import (
     And,
     Equals,
-    Not,
     Int,
-    FALSE,
     Ite,
     LE,
     Plus,
     Solver,
     Symbol,
-    get_model,
-    is_sat,
-    to_smtlib,
     BOOL
 )
 from translator.return_enum import ResultEnum
 from translator.solver_translator import SolverTranslator
-
 
 class SMTTranslator(SolverTranslator):
 
@@ -128,7 +122,7 @@ class SMTTranslator(SolverTranslator):
         self.D[(component, flavour, node)] = Symbol(
             f"{component}_{flavour}_{node}", BOOL
         )
-        
+
 
     def _add_objective(self, component, flav, node, val):
         return

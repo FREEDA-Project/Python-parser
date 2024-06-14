@@ -1,7 +1,5 @@
 from pydantic import BaseModel
-from data.node import Node
 from data.capability import Capability
-
 
 class Link(BaseModel):
     pair: tuple[str, str]

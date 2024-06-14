@@ -2,7 +2,6 @@ from data.property import Property
 from data.requirement import Requirement
 from pydantic import BaseModel
 
-
 class Dependency(BaseModel):
     source: str
     target: str

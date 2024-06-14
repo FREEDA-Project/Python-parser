@@ -52,7 +52,5 @@ class TestGetRoots(unittest.TestCase):
 
         self.assertEqual(set(get_roots(graph)), {'f','a','c','j','i',  'h'})
 
-
-
 if __name__ == '__main__':
     unittest.main()

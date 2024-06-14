@@ -1,13 +1,11 @@
 from data.capability import Capability
 from pydantic import BaseModel
 
-
 class Profile(BaseModel):
     cost_ram: float
     cost_cpu: float
     cost_storage: float
     carbon: float
-
 
 class Node(BaseModel):
     name: str

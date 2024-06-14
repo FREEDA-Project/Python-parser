@@ -1,5 +1,4 @@
 from typing import Any
-from pydantic import ValidationError
 from data.application import Application
 import itertools
 
@@ -71,7 +70,6 @@ class IntermediateLanguageBuilder:
                 map[flav] = 0
             for flav in prop.value:
                 map[flav] = 1
-            
         elif (
             isinstance(prop.value, int) or prop.name in IntermediateLanguage.RES_LIST()
         ):

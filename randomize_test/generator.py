@@ -4,8 +4,6 @@ import argparse
 from randomize_infrastructure import generate_infrastructure
 from randomize_application import generate_with_n_components
 
-
-
 def save_as_yaml(data, filename, directory):
     with open(os.path.join(directory, filename), 'w') as file:
         yaml.dump(data, file)
@@ -32,6 +30,5 @@ if __name__ == "__main__":
     parser.add_argument('n', type=int, help='The number of files to generate.')
     parser.add_argument('dir', type=str, help='root directory where output')
     args = parser.parse_args()
-    
 
     main(args.from_n,args.n, args.dir,args.step)

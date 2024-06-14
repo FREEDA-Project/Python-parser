@@ -1,6 +1,10 @@
 import random
-from utils import fake, generate_dep, POSSIBILE_REQ_COMP, POSSIBILE_REQ_DEPENDENCY
-
+from utils import (
+    fake,
+    generate_dep,
+    POSSIBILE_REQ_COMP,
+    POSSIBILE_REQ_DEPENDENCY
+)
 
 def generate_infrastructure(nodes_n: int):
     nodes = {}

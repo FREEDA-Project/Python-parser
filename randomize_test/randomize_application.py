@@ -1,12 +1,18 @@
 ## this file generates a random application
 import random
-from utils import fake, generate_dep,POSSIBILE_REQ_COMP,POSSIBLE_FLAVOURS,POSSIBILE_REQ_DEPENDENCY,POSSIBILE_SECURITY_REQ
+from utils import (
+    fake,
+    generate_dep,
+    POSSIBILE_REQ_COMP,
+    POSSIBLE_FLAVOURS,
+    POSSIBILE_REQ_DEPENDENCY,
+)
 
 def generate_with_n_components(component_number:int):
     components_name= list(
         "component"+ str(i) for i in range(component_number)
     )
-    
+
     components = {
         name:generate_component(name, components_name) for name in components_name
     }
@@ -29,7 +35,6 @@ def generate_with_n_components(component_number:int):
     }
 
 
-
 # Function to generate component data
 def generate_component(name,otherComponents):
     otherComponents = list(filter(lambda x: x != name, otherComponents))
@@ -38,7 +43,7 @@ def generate_component(name,otherComponents):
         "must": fake.boolean(),
     }
     flavs= random.sample(POSSIBLE_FLAVOURS, k=random.randint(1, len(POSSIBLE_FLAVOURS)))
-    if len(flavs) > 0:  
+    if len(flavs) > 0:
         comp["flavours"] = { }
         used = []
         for flav in POSSIBLE_FLAVOURS:
@@ -46,7 +51,7 @@ def generate_component(name,otherComponents):
                 if random.random() < 0.3:
                     gamma_value = int(random.gammavariate(1, 2))
                     if gamma_value >= len(otherComponents):
-                        gamma_value = len(otherComponents)    
+                        gamma_value = len(otherComponents)
                     used.extend(random.sample(otherComponents, k=gamma_value))
                 comp["flavours"][flav] = {}
                 comp["flavours"][flav]['uses'] = list(set(used))
@@ -58,15 +63,15 @@ def generate_dependency(components):
         if name1 > name2:
             return (name2,name1)
         return (name1,name2)
-    
+
     def check_flav(name1,name2):
         if name1 == name2:
             return False
-        
+
         def get_used_comp_in_flav(name):
             if 'flavours' not in components[name]:
                 return []
-            c = [] 
+            c = []
             for comp in components[name]['flavours'].values():
                 c.extend(comp['uses'])
             return list(set(c))
@@ -76,7 +81,7 @@ def generate_dependency(components):
 
         if name1 in used2 or name2 in used1:
             return True
-        return False        
+        return False
 
     dep = {}
     for name1 in components:
@@ -96,7 +101,7 @@ def generate_dependency(components):
 
 
 def generate_reqirements(component):
-    # randomize which 
+    # randomize which
     flavours = component['flavours']
     # from POSSIBILE_REQ_COMP split in two random list
     common_req = POSSIBILE_REQ_COMP.copy()
@@ -107,7 +112,7 @@ def generate_reqirements(component):
         comp_req = POSSIBILE_REQ_COMP[:i]
         flav_req = POSSIBILE_REQ_COMP[i:]
 
-    common = { }       
+    common = {}
 
     for req in comp_req:
         common[req] = {
@@ -131,5 +136,3 @@ def generate_reqirements(component):
         "common": common,
         "flavour-specific": flav_dict
     }
-        
-

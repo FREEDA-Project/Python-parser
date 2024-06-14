@@ -4,7 +4,6 @@ import itertools
 
 from translator.get_source_nodes import get_roots
 
-
 class IntermediateLanguage(BaseModel):
     comps: set[str]
     nodes: set[str]
@@ -74,12 +73,12 @@ class IntermediateLanguage(BaseModel):
         all = []
         if component in self.depReq and use in self.depReq[component]:
             all = list(self.depReq[component][use].items())
-        
+
         if use in self.depReq and  component in self.depReq[use]:
             all.extend(list(self.depReq[use][component].items()))
-        
+
         return all
 
     @classmethod
-    def MINIMIZED_RES(self)->set:
+    def MINIMIZED_RES(self) -> set:
         return list('latency')

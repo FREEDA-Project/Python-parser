@@ -4,13 +4,10 @@ from config import DEBUG
 from translator.intermediate_language import IntermediateLanguage
 
 
-
 class SolverTranslator(Translator):
-
     def __init__(self, intermediate_language: IntermediateLanguage) -> None:
         self.intermediate = intermediate_language
         self.constraints=[]
-
 
     @abstractmethod
     def _add_at_most_on_flav_and_node(self,conponent):
@@ -31,7 +28,7 @@ class SolverTranslator(Translator):
     @abstractmethod
     def _add_impossibile_deploy(self,component,flav,node):
         pass
-    
+
     @abstractmethod
     def _add_comulative_constaint(self,val,component_requirements):
         pass
@@ -70,7 +67,7 @@ class SolverTranslator(Translator):
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:
                 for use in self.intermediate.uses[component][flav]:
-                    self._add_deploy_used_component(component,flav,use) 
+                    self._add_deploy_used_component(component,flav,use)
 
         # 1.3.1
         if DEBUG:
@@ -86,7 +83,7 @@ class SolverTranslator(Translator):
                             node_cap = self._transform_requirements(
                                 req, self.intermediate.nodeCap[node][req]
                             )
-                            if not (val <= node_cap): 
+                            if not (val <= node_cap):
                                 # can for multiple req so is better to set only one constraint
                                 not_compatible.add((component,flav,node))
         for component,flav,node in not_compatible:
@@ -111,7 +108,6 @@ class SolverTranslator(Translator):
                         )
                 val = self._transform_requirements(req, val)
                 self._add_comulative_constaint(val,component_requirements)
-                
 
         # 1.3.2
         if DEBUG:
@@ -132,11 +128,10 @@ class SolverTranslator(Translator):
                                         req, link_cap[req]
                                     )
 
-                                    if not (val <= linkCapVal): 
+                                    if not (val <= linkCapVal):
                                         impossible_combinations.add((component,flav,node1,use,uses_flav,node2))
-                                
 
-                                inter_node = self.intermediate.INTER_NODE()                 
+                                inter_node = self.intermediate.INTER_NODE()
                                 if inter_node in self.intermediate.nodeCap[node1]:
                                     link_cap = self.intermediate.nodeCap[node1][inter_node]
                                     if link_cap is not None and not (val <= link_cap):
@@ -186,7 +181,7 @@ class SolverTranslator(Translator):
     @abstractmethod
     def _add_objective(self, component, flav, node,val):
         pass
-    
+
     def objective(self):
         for component in self.intermediate.comps:
             for flav in self.intermediate.flav[component]:

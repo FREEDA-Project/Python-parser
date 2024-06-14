@@ -12,22 +12,25 @@ def run_with_timeout(func, args=(), kwargs={}, timeout=10):
     def target(queue, *args, **kwargs):
         result = func(*args, **kwargs)
         queue.put(result)
-    
+
     queue = multiprocessing.Queue()
-    process = multiprocessing.Process(target=target, args=(queue, *args), kwargs=kwargs)
+    process = multiprocessing.Process(
+        target=target,
+        args=(queue, *args),
+        kwargs=kwargs
+    )
     process.start()
     process.join(timeout)
-    
+
     if process.is_alive():
         process.terminate()
         process.join()
         raise _TimeoutError()
-    
+
     if not queue.empty():
         return queue.get()
     else:
         raise _TimeoutError()
-
 
 class Translator(ABC):
     def __init__(self, intermediate_language: IntermediateLanguage) -> None:
@@ -44,8 +47,8 @@ class Translator(ABC):
     def solve(self):
         start_time = time.time()
         try:
-            res = run_with_timeout(self._solve, timeout=TIMEOUT) 
-        
+            res = run_with_timeout(self._solve, timeout=TIMEOUT)
+
         except _TimeoutError:
             end_time = time.time()
             execution_time = end_time - start_time
@@ -55,7 +58,7 @@ class Translator(ABC):
             end_time = time.time()
             execution_time = end_time - start_time
             return (ResultEnum.Error, None), execution_time
-        
+
         end_time = time.time()
         execution_time = end_time - start_time
         return res, execution_time

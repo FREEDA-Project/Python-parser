@@ -6,7 +6,6 @@ from data.requirement import Requirement, FlavourRequirement
 
 ComponentType = Literal["service", "database", "integration"]
 
-
 class Component(BaseModel):
     type: ComponentType
     name: str

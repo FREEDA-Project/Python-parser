@@ -1,11 +1,9 @@
-from typing import Any, Optional
+from typing import Any
 from translator.intermediate_language import IntermediateLanguage
 from translator.translator import Translator
 from config import MINIZINC_MODEL,GECODE_PATH
-from datetime import timedelta
 from translator.return_enum import ResultEnum
 from minizinc import Model, Solver, Instance, Status
-
 
 class MiniZinc(Translator):
     def __init__(self, intermediate_language: IntermediateLanguage):
@@ -289,17 +287,15 @@ class MiniZinc(Translator):
 
     def to_file_string(self) -> str:
         return self.output
-    
+
     def _solve(self):
         model = Model()
 
         model.add_file(MINIZINC_MODEL)
 
         model.add_string(self.to_file_string())
-        
 
         solver = Solver.lookup('gecode')
-        
         solver.executable = GECODE_PATH
 
         instance = Instance(solver, model)
@@ -314,8 +310,8 @@ class MiniZinc(Translator):
                         for j,node in enumerate(self.intermediate.nodes):
                             if result["D"][i][j+1] == 1:
                                 solution.append(f"{component_name}_{flav_name}_{node}")
-                        i += 1  
+                        i += 1
 
-            return ResultEnum.Sat,solution
+            return ResultEnum.Sat, solution
         else:
-            return ResultEnum.NonSat,None         
+            return ResultEnum.NonSat, None

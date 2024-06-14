@@ -1,8 +1,3 @@
-
-# create a enum that can be 
-# Sat(value)
-# NonSat()
-# Timeout()
 import enum
 
 class ResultEnum(enum.Enum):

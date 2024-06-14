@@ -1,4 +1,3 @@
-
 from pulp import (
     PULP_CBC_CMD,
     LpMaximize,
@@ -9,7 +8,6 @@ from pulp import (
 )
 
 from config import CBC_SOLVER_PATH
-from translator.intermediate_language import IntermediateLanguage
 from translator.return_enum import ResultEnum
 from translator.solver_translator import SolverTranslator
 
@@ -17,7 +15,7 @@ class PulpTranslator(SolverTranslator):
 
     def _gen_problem(self) -> LpProblem:
         self.solver = LpProblem("Solver", LpMaximize)
-        self.D= {}
+        self.D = {}
         self.constraints = []
         self.add_variables()
         self.generate_contraints()
@@ -25,7 +23,7 @@ class PulpTranslator(SolverTranslator):
             self.solver += i
         self.objective_f = []
         self.objective()
-        self.solver+=lpSum(self.objective_f)
+        self.solver += lpSum(self.objective_f)
         return self.solver
 
     def _solve(self):
@@ -48,37 +46,26 @@ class PulpTranslator(SolverTranslator):
     def write_to_file(self, file_path: str):
         self._gen_problem().writeMPS(file_path)
 
-
-   
     def _add_at_most_on_flav_and_node(self, component):
-        self.add_constraint(
-            lpSum(
-                [
-                    self.D[(component, flav, node)]
-                    for flav in self.intermediate.flav[component]
-                    for node in self.intermediate.nodes
-                ]
-            )
-            <= 1
-        )
+        self.add_constraint(lpSum([
+            self.D[(component, flav, node)]
+            for flav in self.intermediate.flav[component]
+            for node in self.intermediate.nodes
+        ]) <= 1)
 
     def _add_must_component(self, must):
-        self.add_constraint(
-                lpSum(
-                    self.D[(must, f, n)]
-                    for f in self.intermediate.flav[must]
-                    for n in self.intermediate.nodes
-                )
-                == 1
-        )
+        self.add_constraint(lpSum(
+            self.D[(must, f, n)]
+            for f in self.intermediate.flav[must]
+            for n in self.intermediate.nodes
+        ) == 1)
 
     def _add_deploy_used_component(self, component, flav, use):
         self.add_constraint(
             lpSum(
                 self.D[(component, flav, node)]
                 for node in self.intermediate.nodes
-            )
-            <= lpSum(
+            ) <= lpSum(
                 self.D[(use, flavUse, node)]
                 for flavUse in self.intermediate.flav[use]
                 for node in self.intermediate.nodes
@@ -86,24 +73,19 @@ class PulpTranslator(SolverTranslator):
         )
 
     def _add_total(self, budget, all_buget):
-        self.add_constraint(
-            lpSum(
-                val * comp_val * self.D[(component, flav, node)]
-                for comp_val, val, (component, flav, node) in all_buget
-            )
-            <= budget
-        )
+        self.add_constraint(lpSum(
+            val * comp_val * self.D[(component, flav, node)]
+            for comp_val, val, (component, flav, node) in all_buget
+        ) <= budget)
 
     def _add_impossibile_deploy(self, component, flav, node):
         self.add_constraint(self.D[(component, flav, node)] == False)
 
     def _add_comulative_constaint(self, val, component_requirements):
-        self.add_constraint(
-            lpSum(
-                self.D[(c, f, n)] * v for v, (c, f, n) in component_requirements
-            )
-            <= val
-        )
+        self.add_constraint(lpSum(
+            self.D[(c, f, n)] * v
+            for v, (c, f, n) in component_requirements
+        ) <= val)
 
     def _add_impossibile_combination(
         self, component, flav, node, component1, flav1, node1
@@ -114,7 +96,7 @@ class PulpTranslator(SolverTranslator):
             <= 1
         )
 
-    def _add_boolean_variabile(self,component,flav,node):
+    def _add_boolean_variabile(self, component, flav, node):
         self.D[(component, flav, node)] = LpVariable(
             f"{component}_{flav}_{node}", 0, 1, cat="Binary"
         )
