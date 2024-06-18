@@ -1,7 +1,7 @@
 from translator.translator import Translator
 from abc import abstractmethod
 from config import DEBUG
-from translator.intermediate_language import IntermediateLanguage
+from data.language.intermediate_language import IntermediateLanguage
 
 
 class SolverTranslator(Translator):

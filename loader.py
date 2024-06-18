@@ -1,99 +1,167 @@
-from data.application import Application
-from data.infrastructure import Infrastructure
 from typing import Any
 
-def _load_components(data: dict[str, Any], app: Application):
+from src.data.application import (
+    Flavour,
+    Component,
+    Dependency,
+    Requirement,
+    Budget,
+    Application
+)
+from src.data.infrastructures import (
+    NodeCapability,
+    LinkCapability,
+    Node,
+    Link,
+    Infrastructure
+)
+
+def create_components(data) -> set[Component]:
+    # Create components
+    components = set()
     for component_name, component_data in data["components"].items():
-        component_type = component_data["type"]
+        type = component_data["type"]
         must = component_data.get("must", False)
-        app.add_component(name=component_name, component_type=component_type, must=must)
-        for flavour_name, flavour_data in component_data.get("flavours", {}).items():
-            uses = {
-                (u["component"], u["flavour"])
-                if isinstance(u, dict) else (u, "common")
-                for u in flavour_data["uses"]
-            }
+        flavours = []
 
-            app.components[component_name].add_flavour(
-                flavour_name,
-                uses,
-                flavour_data["importance"],
-            )
+        # Create flavours
+        if "flavours" not in component_data:
+            flavours.append(Flavour(set(["common"]), 1))
+        else:
+            for f_name, f_data in component_data["flavours"].items():
+                uses = {
+                    (u["component"], u["flavour"])
+                    if isinstance(u, dict) else (u, None)
+                    for u in f_data["uses"]
+                }
+                flavours.append(Flavour(f_name, uses, f_data["importance"]))
 
-def _load_requirements(data: dict[str, Any], app: Application):
-    # adding requirements to each component
-    for component_name, reqs_component_data in data["requirements"][
-        "components"
-    ].items():
-        # adding general requirements
-        for req_name, req_data in reqs_component_data["common"].items():
-            req_value = req_data.get("value")
-            req_soft = req_data.get("soft", False)
-            app.components[component_name].add_component_requirement(
-                req_name, req_value, req_soft
-            )
-        # adding flavour specific requirements
-        if "flavour-specific" not in reqs_component_data:
-            continue
-        for flavour_name, flavour_data in reqs_component_data[
-            "flavour-specific"
-        ].items():
-            for req_name, req_data in flavour_data.items():
-                req_value = req_data.get("value")
-                req_soft = req_data.get("soft", False)
-                app.components[component_name].add_flavour_requirement(
-                    flavour_name, req_name, req_value, req_soft
-                )
+        components.add(Component(
+            component_name,
+            type,
+            sorted(flavours, key=lambda f: f.importance),
+            must
+        ))
 
-    for from_component, data_extracted in data["requirements"]["dependencies"].items():
-        for to_component, requirements in data_extracted.items():
-            app.add_dependency(from_component, to_component)
-            for req_name, req_data in requirements.items():
-                req_value = req_data.get("value")
-                req_soft = req_data.get("soft", False)
-                app.dependencies[from_component][to_component].add_requirement(
-                    req_name, req_value, req_soft
-                )
+    # Update requirements
+    for c_name, req_comp_data in data["requirements"]["components"].items():
+        for req_name, req_data in req_comp_data["common"].items():
+            component = [c for c in components if c.name == c_name][0]
+            component.add_requirement(Requirement(
+                req_name,
+                req_data["value"],
+                req_data.get("soft", False)
+            ))
 
-    # load budget
-    budget_data = data["requirements"]["budget"]
-    cost = budget_data.get("cost")
-    carbon = budget_data.get("carbon")
-    app.add_budget(cost, carbon)
+        if "flavour-specific" in req_comp_data:
+            for req_flav_name, req_flavs_data in req_comp_data["flavour-specific"].items():
+                for req_name, req_data in req_flavs_data.items():
+                    flavour_of_component = [
+                        f
+                        for c in components
+                        for f in c.flavours
+                        if c.name == c_name and f.name == req_flav_name
+                    ][0]
+                    flavour_of_component.add_requirement(Requirement(
+                        req_name,
+                        req_data["value"],
+                        req_data.get("soft", False)
+                    ))
 
+    return components
 
-def load_infrastructure(data: dict[str, Any]) -> Infrastructure:
-    infrastructure = Infrastructure(name=data["name"])
+def create_dependencies(data, components: set[Component]) -> set[Dependency]:
+    dependencies = set()
+    for from_name, from_requirements in data["requirements"]["dependencies"].items():
+        for flav_name, flav_data in from_requirements.items():
+            for to_name, flav_requirements in flav_data.items():
+                from_component = [c for c in components if c.name == from_name][0]
+                from_flav = [f for f in from_component.flavours if f.name == flav_name][0]
+                to_component = [c for c in components if c.name == to_name][0]
+
+                requirements = set()
+                for req_name, req_data in flav_requirements.items():
+                    requirements.add(Requirement(
+                        req_name,
+                        req_data["value"],
+                        req_data.get("soft", False)
+                    ))
+
+                dependencies.add(Dependency(
+                    from_component,
+                    from_flav,
+                    to_component,
+                    requirements
+                ))
+    return dependencies
+
+def create_budget(data) -> Budget:
+    return Budget(
+        cost=data["requirements"]["budget"]["cost"],
+        carbon=data["requirements"]["budget"]["cost"]
+    )
+
+def load_infrastructure(data) -> Infrastructure:
+    nodes = set()
     for node_name in data["nodes"]:
-        infrastructure.add_node(node_name)
-        profile = data["nodes"][node_name].get("profile", {})
-        cost_ram = profile["cost"].get("ram", 0)
-        cost_cpu = profile["cost"].get("cpu", 0)
-        cost_storage = profile["cost"].get("storage", 0)
-        carbon = profile.get("carbon", 0)
-        infrastructure.nodes[node_name].set_profile(
-            cost_ram=cost_ram,
-            cost_cpu=cost_cpu,
-            cost_storage=cost_storage,
-            carbon=carbon,
-        )
-        for capability_name, capability_value in data["nodes"][node_name][
-            "capabilities"
-        ].items():
-            infrastructure.nodes[node_name].add_capability(
-                capability_name, capability_value
-            )
+        node_data = data["nodes"][node_name]
 
+        capabilities = set()
+        for c_name, c_value in node_data["capabilities"].items():
+            cost = None
+            carb = None
+            if (
+                (not isinstance(node_data["profile"]["cost"], (int, float)))
+                and
+                (c_name in node_data["profile"]["cost"])
+            ):
+                cost = node_data["profile"]["cost"][c_name]
+            if (
+                (not isinstance(node_data["profile"]["carbon"], (int, float)))
+                and
+                (c_name in node_data["profile"]["carbon"])
+            ):
+                carb = node_data["profile"]["carbon"][c_name]
+            capabilities.add(NodeCapability(c_name, c_value, cost, carb))
+
+        profile_cost = None
+        profile_carbon = None
+        if isinstance(node_data["profile"]["cost"], (int, float)):
+            profile_cost = node_data["profile"]["cost"]
+        if isinstance(node_data["profile"]["carbon"], (int, float)):
+            profile_carbon = node_data["profile"]["carbon"]
+
+        nodes.add(Node(node_name, capabilities, profile_cost, profile_carbon))
+
+    links = set()
     for link_data in data["links"]:
-        connected_nodes = link_data["connected_nodes"]
-        infrastructure.add_link(node1=connected_nodes[0], node2=connected_nodes[1])
-        for capability_name, capability_value in link_data["capabilities"].items():
-            infrastructure.links[-1].add_capability(capability_name, capability_value)
-    return infrastructure
+        capabilities = {
+            LinkCapability(c_name, c_value)
+            for c_name, c_value in link_data["capabilities"].items()
+        }
 
+        from_node_name, to_node_name = link_data["connected_nodes"]
+        from_node = [n for n in nodes if n.name == from_node_name][0]
+        to_node = [n for n in nodes if n.name == to_node_name][0]
+
+        links.add(Link((from_node, to_node), capabilities))
+
+    return Infrastructure(
+        data["name"],
+        nodes,
+        links
+    )
 
 def load_application(data: dict[str, Any]) -> Application:
-    app = Application(name=data["name"])
-    _load_components(data, app)
-    _load_requirements(data, app)
+    components = create_components(data)
+    dependencies = create_dependencies(data, components)
+    budget = create_budget(data)
+
+    app = Application(
+        data["name"],
+        components,
+        dependencies,
+        budget
+    )
+
     return app

@@ -7,7 +7,7 @@ from z3 import (
 )
 from translator.return_enum import ResultEnum
 from config import DEBUG
-from translator.intermediate_language import IntermediateLanguage
+from data.language.intermediate_language import IntermediateLanguage
 from translator.solver_translator import SolverTranslator
 
 class Z3Translator(SolverTranslator):

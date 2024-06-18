@@ -6,8 +6,7 @@ components:
     flavours:
       large:
         uses:
-          - component: backend
-            flavour: tiny
+          - backend
         importance: 7
       medium:
         uses:
@@ -114,15 +113,33 @@ requirements:
           value: [ssl, encrypted_storage]
   dependencies:
     frontend:
-      backend:
-        latency:
-          value: 50
+      medium:
+        backend:
+          latency:
+            value: 50
+      large:
+        backend:
+          latency:
+            value: 50
     backend:
-      database:
-        latency:
-          value: 50
-        availability:
-          value: 98
+      tiny:
+        database:
+          latency:
+            value: 50
+          availability:
+            value: 98
+      medium:
+        database:
+          latency:
+            value: 50
+          availability:
+            value: 98
+      large:
+        database:
+          latency:
+            value: 50
+          availability:
+            value: 98
   budget:
     cost: 5000
     carbon: 500
