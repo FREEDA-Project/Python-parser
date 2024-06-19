@@ -46,3 +46,8 @@ if __name__ == "__main__":
     #        raise Exception("Invalid output format")
 
     print(translated.to_string())
+
+
+# TODO:
+# - Define a file with the resources
+# - Find other todos inside the code

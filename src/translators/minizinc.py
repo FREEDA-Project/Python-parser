@@ -1,12 +1,18 @@
-from typing import Any
 from functools import reduce
-from itertools import product, islice
-from collections import Counter
+from itertools import product
 
 from src.language.intermediate_language import IntermediateStructure
 from src.translators.translator import Translator
 
 class MiniZincTranslator(Translator):
+    def batcher(iterable, n):
+        result = []
+        i = 0
+        while i < len(iterable):
+            result.append(iterable[i:i+n])
+            i += n
+        return result
+
     def __init__(self, struct: IntermediateStructure):
         super(MiniZincTranslator, self).__init__(struct)
 
@@ -29,25 +35,25 @@ class MiniZincTranslator(Translator):
         self.output.append("mustComps = {" + ", ".join(struct.must_components) + "};")
         self.output.append("\n")
 
-        self.output.append("Flavs = {" + ", ".join(
-            f
-            for flav in struct.flavours.values()
-            for f in flav
-        ) + "};")
+        flavours = list(set(e for f in struct.flavours.values() for e in f))
+        self.output.append("Flavs = {" + ", ".join(f for f in flavours) + "};")
         self.output.append("Flav = [" + ", ".join(
             "{" + ", ".join(fs) + "}"
             for fs in struct.flavours.values()
         ) + "];")
         self.output.append("\n")
 
-        self.output.append(self.make_importance(struct))
+        self.output.append(self.make_importance(struct, flavours))
         self.output.append("\n")
 
         self.output.append(self.make_uses(struct))
         self.output.append("\n")
 
+        self.output.append("%CRes = {};") # TODO: fix once you have the resources
+        self.output.append("%NRes = {};") # TODO: fix once you have the resources
+
         self.output.append("MAX_BOUND = " + str(struct.max_bound) + ";")
-        self.output.append("% worstBounds = [];")
+        self.output.append("% worstBounds = [];") # TODO: fix once you have the resources
         self.output.append("bestBounds = [MAX_BOUND - i | i in worstBounds];")
         self.output.append("\n")
 
@@ -77,14 +83,14 @@ class MiniZincTranslator(Translator):
         self.output.append("carbBudget = " + str(struct.carbon_budget) + ";")
         self.output.append("\n")
 
-    def make_importance(self, struct):
+    def make_importance(self, struct, flavours):
         result = "imp = array2d(Comps, Flavs, [\n"
         result += self.construct_element(
             struct.importance,
             [
                 (struct.components, "Comps"),
-                (list(set(e for f in struct.flavours.values() for e in f)), "Flavs")
-            ], lambda ciclers, values : " /\\ ".join(
+                (flavours, "Flavs")
+            ], True, lambda ciclers, values : " /\\ ".join(
                 str(c) + " = " + str(v)
                 for c, v in zip(ciclers, values)),
             lambda _1 : "0"
@@ -111,7 +117,7 @@ class MiniZincTranslator(Translator):
             [
                 (self.compflavs, "CompFlavs"),
                 (self.compflavs, "CompFlavs")
-            ], make_if_uses,
+            ], True, make_if_uses,
             lambda _1, _2 : "else " + str(0)
         )
 
@@ -133,7 +139,7 @@ class MiniZincTranslator(Translator):
             [
                 (self.compflavs, "CompFlavs"),
                 (struct.resources, "Res")
-            ], make_if_comreq,
+            ], True, make_if_comreq,
             lambda _ : "MAX_BOUND"
         )
         result += comreq_body
@@ -152,7 +158,7 @@ class MiniZincTranslator(Translator):
             [
                 (struct.nodes, "Nodes"),
                 (struct.resources, "Res")
-            ], make_if_node_cap,
+            ], True, make_if_node_cap,
             lambda _ : "0"
         )
         result += node_cap
@@ -160,7 +166,7 @@ class MiniZincTranslator(Translator):
 
     def make_dependency_requirement(self, struct):
         result = "depReq = array4d(Comps, Flavs, Comps, Res, [\n"
-        result += "\tif not(i in Flav[c1]) then\n\t\tworstBounds[r1]"
+        result += "\tif not(f1 in Flav[c1]) then\n\t\tworstBounds[r1]" # TODO: I do not know how to remove this "if" (the problem happens when we decide to build a matrix instead)
         result += "\n" + self.construct_element(
             struct.dependencies,
             [
@@ -168,7 +174,7 @@ class MiniZincTranslator(Translator):
                 (struct.flavours, "Flavs"),
                 (struct.components, "Comps"),
                 (struct.resources, "Res")
-            ], lambda ciclers, values : " /\\ ".join(
+            ], False, lambda ciclers, values : " /\\ ".join(
                 str(c) + " = " + (str(v) if not str(c).startswith("r") else "N(" + str(v) + ")")
                 for c, v in zip(ciclers, values)),
             lambda _1, _2 : "else worstBounds[r1]"
@@ -177,7 +183,7 @@ class MiniZincTranslator(Translator):
 
     def make_link_capacity(self, struct):
         result = "linkCap = array3d(Nodes0, Nodes0, Res, [\n"
-        result += " \tif ni = 0 \/ nj = 0 then\n\t\tbestBounds[r1]"
+        result += " \tif ni = 0 \/ nj = 0 then\n\t\tbestBounds[r1]" # TODO: this ideally will be compiled and added when we have bestbounds for each resource
 
         def make_if_link_capacity(ciclers, values):
             n1, n2, r1 = ciclers
@@ -196,20 +202,19 @@ class MiniZincTranslator(Translator):
                 (struct.components, "Comps"),
                 (struct.components, "Comps"),
                 (struct.resources, "Res")
-            ], make_if_link_capacity,
+            ], False, make_if_link_capacity,
             lambda _1, _2 : "else worstBounds[r1]"
         )
         return result
 
     def make_cost(self, struct):
-        result = "carb = array2d(Nodes0, Res, [\n"
-        result += "\t[0 | r in Res] ++ [ % No node\n"
+        result = "cost = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n" # TODO: also this will be bestbounds
         result += self.construct_element(
             struct.node_cost,
             [
                 (struct.nodes, "Nodes"),
                 (struct.resources, "Res")
-            ], lambda ciclers, values : " /\\ ".join(
+            ], True, lambda ciclers, values : " /\\ ".join(
                 str(c) + " = " + str(v)
                 for c, v in zip(ciclers, values)),
             lambda _1 : "0"
@@ -217,14 +222,13 @@ class MiniZincTranslator(Translator):
         return result
 
     def make_carb(self, struct):
-        result = "carb = array2d(Nodes0, Res, [\n"
-        result += "\t[0 | r in Res] ++ [ % No node\n"
+        result = "carb = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n"
         result += self.construct_element(
             struct.node_carb,
             [
                 (struct.nodes, "Nodes"),
                 (struct.resources, "Res")
-            ], lambda ciclers, values : " /\\ ".join(
+            ], True, lambda ciclers, values : " /\\ ".join(
                 str(c) + " = " + str(v)
                 for c, v in zip(ciclers, values)),
             lambda _1 : "0"
@@ -239,11 +243,12 @@ class MiniZincTranslator(Translator):
         self,
         values: dict,
         indexes: list[tuple[set, str]],
+        first_if: bool,
         if_generator, #: Callable[list[str], tuple]
         no_value, #: Callable[list[str], list[str]] | Callable[tuple]
     ) -> str:
         if self.check_sparsity(values, [i[0] for i in indexes]):
-            return self.construct_via_if(values, indexes, if_generator, no_value)
+            return self.construct_via_if(values, indexes, first_if, if_generator, no_value)
         else:
             return self.construct_explicit(values, indexes, no_value)
 
@@ -251,6 +256,7 @@ class MiniZincTranslator(Translator):
         self,
         values: dict,
         indexes: list[tuple[set, str]],
+        first_if: bool,
         if_generator, #: Callable[list[str], tuple]
         if_finisher, #: Callable[list[str], list[str]]
     ) -> str:
@@ -266,25 +272,17 @@ class MiniZincTranslator(Translator):
             cicler_names.append(cicler)
             finisher.append(cicler + " in " + n)
 
-        body = [
-            "\telseif " + if_generator(cicler_names, ks) + " then " + str(v)
-            for ks, v in values.items()
-        ]
+        body = []
+        for i, (ks, v) in enumerate(values.items()):
+            first_part = "\tif " if i == 0 and first_if else "\telseif "
+            body.append(first_part + if_generator(cicler_names, ks) + " then " + str(v))
 
         body.append("\t" + if_finisher(cicler_names, [k for k, _ in values.items()]))
         body.append("\tendif | " +  ", ".join(finisher) + "\n]);")
 
         return "\n".join(body)
 
-    def batcher(self, iterable, n):
-        result = []
-        i = 0
-        while i < len(iterable):
-            result.append(iterable[i:i+n])
-            i += n
-        return result
-
-    def matrix_creator(
+    def matrix_creator( # TODO: add types
         self,
         batched_indexes,
         indexes,
@@ -319,11 +317,13 @@ class MiniZincTranslator(Translator):
         values: dict,
         indexes: list[tuple[set, str]],
         no_value # Callable[tuple]
+        # TODO: no_value is a bit problematic: if it construct a "if" then it
+        # will have 2 parameters, otherwise if matrix it will be one
     ) -> str:
         only_indexes = list(product(*(i[0] for i in indexes)))
         batched_indexes = only_indexes
         for index_values, _ in list(reversed(indexes))[:-1]:
-            batched_indexes = self.batcher(batched_indexes, len(index_values))
+            batched_indexes = MiniZincTranslator.batcher(batched_indexes, len(index_values))
 
         return self.matrix_creator(
             batched_indexes,

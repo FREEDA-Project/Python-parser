@@ -37,7 +37,7 @@ class IntermediateStructure:
 
     def maybe_update_maxbound(self, value: float):
         if value > self.max_bound:
-            self.max_bound = value
+            self.max_bound = value + 1
 
     def recompute_importance(self, flavours):
         # Followng the definition from the model.pdf file
