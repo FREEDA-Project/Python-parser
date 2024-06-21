@@ -30,17 +30,35 @@ def create_components(data) -> set[Component]:
         else:
             for f_name, f_data in component_data["flavours"].items():
                 uses = {
-                    (u["component"], u["flavour"])
+                    (u["component"], u["min_flavour"])
                     if isinstance(u, dict) else (u, None)
                     for u in f_data["uses"]
                 }
-                flavours.append(Flavour(f_name, uses, f_data["importance"]))
+                flavours.append(Flavour(f_name, uses))
+
+        # Re-order flavour based on (specified) importance
+        if "importance_order" in component_data:
+            order = set()
+            for f in component_data["importance_order"]:
+                if isinstance(f, list):
+                    order = order.union(f)
+                else:
+                    order.add(f)
+
+                importance_order = component_data["importance_order"]
+        else:
+            importance_order = sorted([f.name for f in flavours])
+
+        # Check: is there a flavour that is not ordered?
+        if order.union({f.name for f in flavours}) != order:
+            raise NameError(f"Flavours in {component_name} are not completely ordered")
 
         components.add(Component(
             component_name,
             type,
-            sorted(flavours, key=lambda f: f.importance),
-            must
+            flavours,
+            must,
+            importance_order=importance_order
         ))
 
     # Update requirements

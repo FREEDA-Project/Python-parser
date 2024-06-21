@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Any
 
 from src.data.property import Property
 
@@ -15,12 +15,10 @@ class Flavour:
         self,
         name: str,
         uses: set[tuple[str, str]],
-        importance: int,
         requirements: list[Requirement] = []
     ):
         self.name = str(name)
         self.uses = uses
-        self.importance = importance
         self.requirements = requirements
 
     def add_requirement(self, requirement: Requirement):
@@ -33,13 +31,15 @@ class Component:
         type: ComponentType,
         flavours: list[Flavour],
         must: bool,
-        requirements: list[Requirement] = []
+        requirements: list[Requirement] = [],
+        importance_order: list[Any] = [] # str | list[str] heterogeneously each indicating a name in the flavours list
     ):
         self.name = name
         self.type = type
         self.flavours = flavours
         self.must = must
         self.requirements = requirements
+        self.importance_order = importance_order
 
     def add_requirement(self, requirement: Requirement):
         self.requirements.append(requirement)

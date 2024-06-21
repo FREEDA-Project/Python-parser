@@ -7,34 +7,30 @@ components:
       large:
         uses:
           - backend
-        importance: 7
       medium:
         uses:
           - component: backend
-            flavour: tiny
-        importance: 0
+            min_flavour: tiny
+    importance_order: [medium, large]
   backend:
     type: service
     flavours:
       large:
         uses:
           - component: database
-            flavour: large
-        importance: 3
+            min_flavour: large
       medium:
         uses:
           - component: database
-            flavour: large
-        importance: 2
+            min_flavour: large
       tiny:
         uses: []
-        importance: 1
+    importance_order: [tiny, [medium, large]]
   database:
     type: database
     flavours:
       large:
         uses:  []
-        importance: 2
 requirements:
   components:
     frontend:

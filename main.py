@@ -15,11 +15,18 @@ if __name__ == "__main__":
     parser.add_argument("components", type=str, help="Components YAML file")
     parser.add_argument("infrastructure", type=str, help="Infrastructure YAML file")
     parser.add_argument(
-        "--output-format",
+        "--format",
         "-f",
-        choices=["minizinc", "smt", "pulp", "z3"],
+        choices=["minizinc", "smt", "ampl"],
         default="minizinc",
         help="Output format",
+    )
+    parser.add_argument(
+        "--flavour-priority",
+        "-p",
+        choices=["manual", "min", "max"],
+        default="min",
+        help="Flavour order choosing strategy",
     )
     args = parser.parse_args()
 
@@ -31,9 +38,13 @@ if __name__ == "__main__":
         data = yaml.safe_load(yaml_file)
         infrastructure = load_infrastructure(data)
 
-    intermediate_structure = IntermediateStructure(app, infrastructure)
+    intermediate_structure = IntermediateStructure(
+        app,
+        infrastructure,
+        args.flavour_priority
+    )
 
-    match args.output_format:
+    match args.format:
         case "minizinc":
             translated = MiniZincTranslator(intermediate_structure)
     #    case "smt":

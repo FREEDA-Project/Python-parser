@@ -6,7 +6,12 @@ from src.data.application import Application
 from src.data.infrastructures import Infrastructure
 
 class IntermediateStructure:
-    def __init__(self, app: Application, infrastructure: Infrastructure) -> None:
+    def __init__(
+        self,
+        app: Application,
+        infrastructure: Infrastructure,
+        flavour_order_strategy: str
+    ) -> None:
         self.max_bound = 0
 
         self.app_name = app.name
@@ -20,7 +25,7 @@ class IntermediateStructure:
         self.resources = set()
         self.component_requirements = OrderedDict()
         self.dependencies = OrderedDict()
-        self.initialize_with_app(app)
+        self.initialize_with_app(app, flavour_order_strategy)
 
         self.infrastructure_name = infrastructure.name
         self.nodes = list()
@@ -30,8 +35,6 @@ class IntermediateStructure:
         self.link_capacity = OrderedDict()
         self.initialize_with_infrastruture(infrastructure)
 
-        self.recompute_importance(self.flavours)
-
         # After filling it, make it a list
         self.resources = list(self.resources)
 
@@ -39,32 +42,60 @@ class IntermediateStructure:
         if value > self.max_bound:
             self.max_bound = value + 1
 
-    def recompute_importance(self, flavours):
+    def by_order_strategy(self, components, order_strategy) -> list[set[str]]:
+        max_len = max(len(c.flavours) for c in components)
+        F_sets = [[] for _ in range(max_len)]
+
+        orders = [c.importance_order for c in components]
+        match order_strategy:
+            case "min":
+                for io in orders:
+                    for i, flavour in enumerate(io):
+                        if isinstance(flavour, list):
+                            for f in flavour:
+                                F_sets[i].append(f)
+                        else:
+                            F_sets[i].append(flavour)
+            case "max":
+                for io in orders:
+                    for i, flavour in zip(range(max_len - len(io), max_len), io):
+                        if isinstance(flavour, list):
+                            for f in flavour:
+                                F_sets[i].append(f)
+                        else:
+                            F_sets[i].append(flavour)
+        return F_sets
+
+    def compute_importance(self, components, order_strategy):
+        F_sets = self.by_order_strategy(components, order_strategy)
+
         # Followng the definition from the model.pdf file
-        n = list()
-        for fs in flavours.values():
-            for f in range(len(fs)):
-                try:
-                    n[f] += 1
-                except IndexError:
-                    n.append(1)
-
         self.importance = OrderedDict()
-        for c, fs in flavours.items():
-            for i, f in enumerate(fs):
-                imp = reduce(lambda x, y: x * y, [
-                    j for index, j in enumerate(n)
-                    if index < i
-                ], 1)
-                self.importance[(c, f)] = imp + 1 if imp > 1 else 1
+        for c, imp_ord_list in {c.name : c.importance_order for c in components}.items():
+            for i, flav_name in enumerate(imp_ord_list):
+                if isinstance(flav_name, list):
+                    for f in flav_name:
+                        imp = reduce(lambda x, y: x * y, [
+                            len(F) for index, F in enumerate(F_sets)
+                            if index < i
+                        ], 1)
+                        self.importance[(c, f)] = imp + 1 if imp > 1 else 1
+                else:
+                    imp = reduce(lambda x, y: x * y, [
+                        len(F) for index, F in enumerate(F_sets)
+                        if index < i
+                    ], 1)
+                    self.importance[(c, flav_name)] = imp + 1 if imp > 1 else 1
 
-    def initialize_with_app(self, app: Application):
+    def initialize_with_app(self, app: Application, order_strategy: str):
+        self.compute_importance(app.components, order_strategy)
+
         for c in app.components:
             self.components.append(c.name)
             if c.must:
                 self.must_components.append(c.name)
 
-            flavs = sorted([f for f in c.flavours], key=lambda f : f.importance)
+            flavs = sorted(c.flavours, key=lambda f : self.importance[(c.name, f.name)])
             self.flavours[c.name] = [f.name for f in flavs]
             for f in flavs:
                 self.uses[(c.name, f.name)] = {
@@ -73,7 +104,6 @@ class IntermediateStructure:
                     if len(f.uses) > 0
                 }
 
-                self.importance[(c.name, f.name)] = f.importance
                 for r in chain(c.requirements, f.requirements):
                     if isinstance(r.value, list):
                         for e in r.value:
