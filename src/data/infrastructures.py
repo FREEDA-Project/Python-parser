@@ -1,14 +1,15 @@
+from src.data.resources import Resource
 from src.data.property import Property
 
 class NodeCapability:
     def __init__(
         self,
-        name: str,
+        resource: Resource,
         value: Property,
         cost: float = None,
         carb: float = None
     ):
-        self.name = name
+        self.resource = resource
         self.value = value
         self.cost = cost
         self.carb = carb
@@ -16,10 +17,10 @@ class NodeCapability:
 class LinkCapability:
     def __init__(
         self,
-        name: str,
+        resource: Resource,
         value: Property
     ):
-        self.name = name
+        self.resource = resource
         self.value = value
 
 class Node:

@@ -1,25 +1,34 @@
 from typing import Literal, Any
 
+from src.data.resources import Resource
 from src.data.property import Property
 
 ComponentType = Literal["service", "database", "integration"]
 
 class Requirement:
-    def __init__(self, name: str, value: Property, soft: bool = False):
-        self.name = name
+    def __init__(
+        self,
+        resource: Resource,
+        value: Property,
+        soft: bool = False
+    ):
+        self.resource = resource
         self.value = value
         self.soft = soft
+    def __str__(self) -> str:
+        return str(self.resource.name) + "_" + str(self.value)
+    def __repr__(self) -> str:
+        return str(self.resource.name) + "_" + str(self.value)
 
 class Flavour:
     def __init__(
         self,
         name: str,
         uses: set[tuple[str, str]],
-        requirements: list[Requirement] = []
     ):
         self.name = str(name)
         self.uses = uses
-        self.requirements = requirements
+        self.requirements = list()
 
     def add_requirement(self, requirement: Requirement):
         self.requirements.append(requirement)
@@ -31,14 +40,13 @@ class Component:
         type: ComponentType,
         flavours: list[Flavour],
         must: bool,
-        requirements: list[Requirement] = [],
-        importance_order: list[Any] = [] # str | list[str] heterogeneously each indicating a name in the flavours list
+        importance_order: list[Any] # str | list[str] heterogeneously each indicating a name in the flavours list
     ):
         self.name = name
         self.type = type
         self.flavours = flavours
         self.must = must
-        self.requirements = requirements
+        self.requirements = list()
         self.importance_order = importance_order
 
     def add_requirement(self, requirement: Requirement):

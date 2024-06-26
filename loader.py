@@ -1,6 +1,11 @@
 from typing import Any
 
-from src.data.application import (
+from src.data.resources import (
+    Resource,
+    ListResource
+)
+
+from src.data.applications import (
     Flavour,
     Component,
     Dependency,
@@ -16,7 +21,14 @@ from src.data.infrastructures import (
     Infrastructure
 )
 
-def create_components(data) -> set[Component]:
+def get_resource(resources: list[Resource], r_name: Resource):
+    resource = [r for r in resources if r_name == r.name]
+    if len(resource) > 0:
+        return resource[0]
+    else:
+        raise AssertionError(f"Unable to find resource \"{r_name}\". Terminating")
+
+def create_components(data, resources: list[Resource]) -> set[Component]:
     # Create components
     components = set()
     for component_name, component_data in data["components"].items():
@@ -65,8 +77,9 @@ def create_components(data) -> set[Component]:
     for c_name, req_comp_data in data["requirements"]["components"].items():
         for req_name, req_data in req_comp_data["common"].items():
             component = [c for c in components if c.name == c_name][0]
+            resource = get_resource(resources, req_name)
             component.add_requirement(Requirement(
-                req_name,
+                resource,
                 req_data["value"],
                 req_data.get("soft", False)
             ))
@@ -74,6 +87,7 @@ def create_components(data) -> set[Component]:
         if "flavour-specific" in req_comp_data:
             for req_flav_name, req_flavs_data in req_comp_data["flavour-specific"].items():
                 for req_name, req_data in req_flavs_data.items():
+                    resource = get_resource(resources, req_name)
                     flavour_of_component = [
                         f
                         for c in components
@@ -81,14 +95,18 @@ def create_components(data) -> set[Component]:
                         if c.name == c_name and f.name == req_flav_name
                     ][0]
                     flavour_of_component.add_requirement(Requirement(
-                        req_name,
+                        resource,
                         req_data["value"],
                         req_data.get("soft", False)
                     ))
 
     return components
 
-def create_dependencies(data, components: set[Component]) -> set[Dependency]:
+def create_dependencies(
+    data,
+    components: set[Component],
+    resources: list[Resource]
+) -> set[Dependency]:
     dependencies = set()
     for from_name, from_requirements in data["requirements"]["dependencies"].items():
         for flav_name, flav_data in from_requirements.items():
@@ -99,8 +117,9 @@ def create_dependencies(data, components: set[Component]) -> set[Dependency]:
 
                 requirements = set()
                 for req_name, req_data in flav_requirements.items():
+                    resource = get_resource(resources, req_name)
                     requirements.add(Requirement(
-                        req_name,
+                        resource,
                         req_data["value"],
                         req_data.get("soft", False)
                     ))
@@ -116,10 +135,10 @@ def create_dependencies(data, components: set[Component]) -> set[Dependency]:
 def create_budget(data) -> Budget:
     return Budget(
         cost=data["requirements"]["budget"]["cost"],
-        carbon=data["requirements"]["budget"]["cost"]
+        carbon=data["requirements"]["budget"]["carbon"]
     )
 
-def load_infrastructure(data) -> Infrastructure:
+def load_infrastructure(data, resources: list[Resource]) -> Infrastructure:
     nodes = set()
     for node_name in data["nodes"]:
         node_data = data["nodes"][node_name]
@@ -140,27 +159,31 @@ def load_infrastructure(data) -> Infrastructure:
                 (c_name in node_data["profile"]["carbon"])
             ):
                 carb = node_data["profile"]["carbon"][c_name]
-            capabilities.add(NodeCapability(c_name, c_value, cost, carb))
 
-        profile_cost = None
-        profile_carbon = None
-        if isinstance(node_data["profile"]["cost"], (int, float)):
-            profile_cost = node_data["profile"]["cost"]
-        if isinstance(node_data["profile"]["carbon"], (int, float)):
-            profile_carbon = node_data["profile"]["carbon"]
+            resource = get_resource(resources, c_name)
+            capabilities.add(NodeCapability(resource, c_value, cost, carb))
+
+        profile_cost = node_data["profile"].get("cost")
+        profile_carbon = node_data["profile"].get("carbon")
 
         nodes.add(Node(node_name, capabilities, profile_cost, profile_carbon))
 
     links = set()
     for link_data in data["links"]:
-        capabilities = {
-            LinkCapability(c_name, c_value)
-            for c_name, c_value in link_data["capabilities"].items()
-        }
+        capabilities = set()
+        for c_name, c_value in link_data["capabilities"].items():
+            resource = get_resource(resources, c_name)
+            capabilities.add(LinkCapability(resource, c_value))
 
         from_node_name, to_node_name = link_data["connected_nodes"]
-        from_node = [n for n in nodes if n.name == from_node_name][0]
-        to_node = [n for n in nodes if n.name == to_node_name][0]
+        try:
+            from_node = [n for n in nodes if n.name == from_node_name][0]
+        except:
+            raise AssertionError(f"Unable to find node with name {from_node_name}")
+        try:
+            to_node = [n for n in nodes if n.name == to_node_name][0]
+        except:
+            raise AssertionError(f"Unable to find node with name {to_node}")
 
         links.add(Link((from_node, to_node), capabilities))
 
@@ -170,9 +193,9 @@ def load_infrastructure(data) -> Infrastructure:
         links
     )
 
-def load_application(data: dict[str, Any]) -> Application:
-    components = create_components(data)
-    dependencies = create_dependencies(data, components)
+def load_application(data: dict[str, Any], resouces: list[Resource]) -> Application:
+    components = create_components(data, resouces)
+    dependencies = create_dependencies(data, components, resouces)
     budget = create_budget(data)
 
     app = Application(
@@ -183,3 +206,29 @@ def load_application(data: dict[str, Any]) -> Application:
     )
 
     return app
+
+def load_resources(data: dict[str, Any]) -> list[Resource]:
+    resources = []
+    for r_name, r_data in data.items():
+        minimization = True if r_data["optimization"] == "minimization" else False
+        consumable = True if "type" in r_data and r_data["type"] == "consumable" else False
+        worst_bound = r_data.get("worst_bound")
+        best_bound = r_data.get("best_bound")
+        if worst_bound is None and best_bound is None:
+            raise AssertionError(f"At least one of best_bound and worst_bound must have a value for resource {r_name}")
+
+        if "choices" in r_data:
+            resources.append(ListResource(
+                r_name,
+                minimization,
+                r_data["choices"]
+            ))
+        else:
+            resources.append(Resource(
+                r_name,
+                consumable,
+                minimization,
+                best_bound,
+                worst_bound
+            ))
+    return resources

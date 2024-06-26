@@ -3,7 +3,7 @@ import argparse
 
 import yaml
 
-from loader import load_application, load_infrastructure
+from loader import load_application, load_infrastructure, load_resources
 from src.language.intermediate_language import IntermediateStructure
 from src.translators.minizinc import MiniZincTranslator
 #from translators.pulp import PulpTranslator
@@ -14,6 +14,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="FREEDA YAML complier to solver model")
     parser.add_argument("components", type=str, help="Components YAML file")
     parser.add_argument("infrastructure", type=str, help="Infrastructure YAML file")
+    parser.add_argument("resources", type=str, help="Resources YAML file")
     parser.add_argument(
         "--format",
         "-f",
@@ -30,13 +31,17 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    with open(args.resources, "r") as yaml_file:
+        data = yaml.safe_load(yaml_file)
+        resources = load_resources(data)
+
     with open(args.components, "r") as yaml_file:
         data = yaml.safe_load(yaml_file)
-        app = load_application(data)
+        app = load_application(data, resources)
 
     with open(args.infrastructure, "r") as yaml_file:
         data = yaml.safe_load(yaml_file)
-        infrastructure = load_infrastructure(data)
+        infrastructure = load_infrastructure(data, resources)
 
     intermediate_structure = IntermediateStructure(
         app,

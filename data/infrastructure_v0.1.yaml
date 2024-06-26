@@ -1,6 +1,6 @@
 name: my_infrastructure
 nodes:
-  n1:
+  node_a:
     capabilities:
       cpu: 2
       ram: 80
@@ -12,7 +12,7 @@ nodes:
     profile:
       cost: { cpu: 50, ram: 5, storage: 1 }
       carbon: 27
-  n2:
+  node_b:
     capabilities:
       cpu: 4
       ram: 320
@@ -24,7 +24,7 @@ nodes:
     profile:
       cost: { cpu: 50, ram: 5, storage: 1 }
       carbon: 35
-  n3:
+  node_c:
     capabilities:
       cpu: 32
       ram: 5120
@@ -37,9 +37,9 @@ nodes:
       cost: { cpu: 150, ram: 25, storage: 10 }
       carbon: 25
 links:
-  - connected_nodes: [ n1, n2 ]
+  - connected_nodes: [ node_a, node_b ]
     capabilities: { latency: 10, availability: 99 }
-  - connected_nodes: [ n2, n3 ]
+  - connected_nodes: [ node_b, node_c ]
     capabilities: { latency: 20, availability: 98 }
-  - connected_nodes: [ n1, n3 ]
+  - connected_nodes: [ node_a, node_c ]
     capabilities: { latency: 15, availability: 96 }

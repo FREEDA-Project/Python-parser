@@ -1,3 +1,4 @@
+from typing import Any, Callable
 from functools import reduce
 from itertools import product
 
@@ -33,7 +34,6 @@ class MiniZincTranslator(Translator):
 
         self.output.append("Comps = {" + ", ".join(struct.components) + "};")
         self.output.append("mustComps = {" + ", ".join(struct.must_components) + "};")
-        self.output.append("\n")
 
         flavours = list(set(e for f in struct.flavours.values() for e in f))
         self.output.append("Flavs = {" + ", ".join(f for f in flavours) + "};")
@@ -41,47 +41,34 @@ class MiniZincTranslator(Translator):
             "{" + ", ".join(fs) + "}"
             for fs in struct.flavours.values()
         ) + "];")
-        self.output.append("\n")
 
         self.output.append(self.make_importance(struct, flavours))
-        self.output.append("\n")
 
         self.output.append(self.make_uses(struct))
-        self.output.append("\n")
 
-        self.output.append("%CRes = {};") # TODO: fix once you have the resources
-        self.output.append("%NRes = {};") # TODO: fix once you have the resources
+        self.output.append("CRes = {" + ", ".join(struct.consumable_resource) + "};")
+        self.output.append("NRes = {" + ", ".join(struct.non_consumable_resource) + "};")
 
-        self.output.append("MAX_BOUND = " + str(struct.max_bound) + ";")
-        self.output.append("% worstBounds = [];") # TODO: fix once you have the resources
-        self.output.append("bestBounds = [MAX_BOUND - i | i in worstBounds];")
-        self.output.append("\n")
+        self.output.append(self.make_resources_bounds(struct))
 
         self.output.append(self.make_component_requirement(struct))
-        self.output.append("\n")
 
         self.output.append("Nodes = {" + ", ".join(struct.nodes) + "};\n")
         self.output.append(self.make_node_capabilities(struct))
-        self.output.append("\n")
 
         self.output.append(self.make_dependency_requirement(struct))
-        self.output.append("\n")
 
         self.output.append(self.make_link_capacity(struct))
-        self.output.append("\n")
 
         self.output.append(self.make_cost(struct))
-        self.output.append("\n")
 
         self.output.append(self.make_carb(struct))
-        self.output.append("\n")
 
         self.output.append("costWeight = 0;")
-        self.output.append("consWeight = 1;")
+        self.output.append("carbWeight = 1;")
 
         self.output.append("costBudget = " + str(struct.cost_budget) + ";")
         self.output.append("carbBudget = " + str(struct.carbon_budget) + ";")
-        self.output.append("\n")
 
     def make_importance(self, struct, flavours):
         result = "imp = array2d(Comps, Flavs, [\n"
@@ -90,11 +77,39 @@ class MiniZincTranslator(Translator):
             [
                 (struct.components, "Comps"),
                 (flavours, "Flavs")
-            ], True, lambda ciclers, values : " /\\ ".join(
-                str(c) + " = " + str(v)
-                for c, v in zip(ciclers, values)),
-            lambda _1 : "0"
+            ],
+            {
+                "first_if": True,
+                "if_generator": lambda ciclers, values : " /\\ ".join(
+                    str(c) + " = " + str(v)
+                    for c, v in zip(ciclers, values)
+                ),
+                "no_value_if" : lambda _1, _2 : "else 0",
+                "no_value_matrix" : lambda _ : "0"
+            }
         )
+        return result
+
+    def make_resources_bounds(self, struct):
+        result = "MAX_BOUND = " + str(struct.max_bound) + ";\n"
+        worst_list = []
+        best_list = []
+        for r in struct.resources:
+            worst = (
+                struct.worst_bounds[r]
+                if r in struct.worst_bounds
+                else struct.max_bound - struct.best_bounds[r]
+            )
+            best = (
+                struct.best_bounds[r]
+                if r in struct.best_bounds
+                else struct.max_bound - struct.worst_bounds[r]
+            )
+            worst_list.append(str(worst))
+            best_list.append(str(best))
+
+        result += "worstBounds = [" + ", ".join(worst_list) + "];\n"
+        result += "bestBounds = [" + ", ".join(best_list) + "];\n"
         return result
 
     def make_uses(self, struct):
@@ -117,8 +132,13 @@ class MiniZincTranslator(Translator):
             [
                 (self.compflavs, "CompFlavs"),
                 (self.compflavs, "CompFlavs")
-            ], True, make_if_uses,
-            lambda _1, _2 : "else " + str(0)
+            ],
+            {
+                "first_if": True,
+                "if_generator": make_if_uses,
+                "no_value_if": lambda _1, _2 : "else 0",
+                "no_value_matrix": lambda _ : "0"
+            }
         )
 
         return result
@@ -139,8 +159,14 @@ class MiniZincTranslator(Translator):
             [
                 (self.compflavs, "CompFlavs"),
                 (struct.resources, "Res")
-            ], True, make_if_comreq,
-            lambda _ : "MAX_BOUND"
+            ],
+            {
+                "first_if": True,
+                "if_generator": make_if_comreq,
+                "no_value_if": lambda _1, _2 : "else 0",
+                "no_value_matrix": lambda r :
+                    struct.worst_bounds[r[1]] if r[1] in struct.worst_bounds else struct.best_bounds[r[1]]
+            }
         )
         result += comreq_body
         return result
@@ -158,80 +184,126 @@ class MiniZincTranslator(Translator):
             [
                 (struct.nodes, "Nodes"),
                 (struct.resources, "Res")
-            ], True, make_if_node_cap,
-            lambda _ : "0"
+            ],
+            {
+                "first_if": True,
+                "if_generator": make_if_node_cap,
+                "no_value_if": lambda _1, _2 : "else 0",
+                "no_value_matrix": lambda _ : "0"
+            }
         )
         result += node_cap
         return result
 
     def make_dependency_requirement(self, struct):
         result = "depReq = array4d(Comps, Flavs, Comps, Res, [\n"
-        result += "\tif not(f1 in Flav[c1]) then\n\t\tworstBounds[r1]" # TODO: I do not know how to remove this "if" (the problem happens when we decide to build a matrix instead)
-        result += "\n" + self.construct_element(
+        def make_if_dependency_requirement(ciclers, values):
+            result = []
+            for c, v in zip(ciclers, values):
+                if str(v) in struct.consumable_resource:
+                    l = "C"
+                else:
+                    l = "N"
+
+                value = v if not c.startswith("r") else l + "(" + str(v) + ")"
+                result.append(c + " = " + value)
+
+            return " /\\ ".join(result)
+
+        result += self.construct_element(
             struct.dependencies,
             [
                 (struct.components, "Comps"),
                 (struct.flavours, "Flavs"),
                 (struct.components, "Comps"),
                 (struct.resources, "Res")
-            ], False, lambda ciclers, values : " /\\ ".join(
-                str(c) + " = " + (str(v) if not str(c).startswith("r") else "N(" + str(v) + ")")
-                for c, v in zip(ciclers, values)),
-            lambda _1, _2 : "else worstBounds[r1]"
+            ],
+            {
+                "first_if": True,
+                "if_generator": make_if_dependency_requirement,
+                "no_value_if": lambda _1, _2 : "else worstBounds[r1]",
+                "no_value_matrix": lambda _ : "MAX_BOUND"
+            }
         )
         return result
 
     def make_link_capacity(self, struct):
         result = "linkCap = array3d(Nodes0, Nodes0, Res, [\n"
-        result += " \tif ni = 0 \/ nj = 0 then\n\t\tbestBounds[r1]" # TODO: this ideally will be compiled and added when we have bestbounds for each resource
+        result += " \tif n1 = n2 then\n\t\tnodeCap[n1, r1]\n"
+        result += " \telseif n1 = 0 \/ n2 = 0 then\n\t\tbestBounds[r1]" # TODO: this ideally will be compiled and added when we have bestbounds for each resource
 
         def make_if_link_capacity(ciclers, values):
-            n1, n2, r1 = ciclers
-            v1, v2, vr = values
-            return (
-                "{" +
-                    str(n1) + ", " + str(n2)
-                + "} = {" +
-                    str(v1) + ", " + str(v2)
-                + "}" +  " /\\ " + str(r1) + " = N(" + str(vr) + ")"
-            )
+            result = []
+            for c, v in zip(ciclers, values):
+                if str(v) in struct.consumable_resource:
+                    l = "C"
+                else:
+                    l = "N"
+
+                value = v if not c.startswith("r") else l + "(" + str(v) + ")"
+                result.append(c + " = " + value)
+
+            return " /\\ ".join(result)
 
         result += "\n" + self.construct_element(
             struct.link_capacity,
             [
-                (struct.components, "Comps"),
-                (struct.components, "Comps"),
+                (struct.nodes, "Nodes0"),
+                (struct.nodes, "Nodes0"),
                 (struct.resources, "Res")
-            ], False, make_if_link_capacity,
-            lambda _1, _2 : "else worstBounds[r1]"
+            ],
+            {
+                "if_generator": make_if_link_capacity,
+                "no_value_if": lambda _1, _2 : "else worstBounds[r1]",
+                "no_value_matrix": lambda _ : "MAX_BOUND"
+            }
         )
         return result
 
     def make_cost(self, struct):
-        result = "cost = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n" # TODO: also this will be bestbounds
+        result = "cost = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n"
         result += self.construct_element(
             struct.node_cost,
             [
                 (struct.nodes, "Nodes"),
                 (struct.resources, "Res")
-            ], True, lambda ciclers, values : " /\\ ".join(
-                str(c) + " = " + str(v)
-                for c, v in zip(ciclers, values)),
-            lambda _1 : "0"
+            ],
+            {
+                "first_if": True,
+                "if_generator": lambda ciclers, values : " /\\ ".join(
+                    str(c) + " = " + str(v) for c, v in zip(ciclers, values)),
+                "no_value_if": lambda _1, _2 : "else 0",
+                "no_value_matrix": lambda _ : "0"
+            }
         )
         return result
 
     def make_carb(self, struct):
         result = "carb = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n"
+        def make_if_carb(ciclers, values):
+            result = []
+            for c, v in zip(ciclers, values):
+                if str(v) in struct.consumable_resource:
+                    l = "C"
+                else:
+                    l = "N"
+
+                value = v if not c.startswith("r") else l + "(" + str(v) + ")"
+                result.append(c + " = " + value)
+
+            return " /\\ ".join(result)
         result += self.construct_element(
             struct.node_carb,
             [
                 (struct.nodes, "Nodes"),
                 (struct.resources, "Res")
-            ], True, lambda ciclers, values : " /\\ ".join(
-                str(c) + " = " + str(v)
-                for c, v in zip(ciclers, values)),
-            lambda _1 : "0"
+            ],
+            {
+                "first_if": True,
+                "if_generator": make_if_carb,
+                "no_value_if": lambda _1, _2 : "else 0",
+                "no_value_matrix": lambda _ : "0"
+            }
         )
         return result
 
@@ -243,13 +315,15 @@ class MiniZincTranslator(Translator):
         self,
         values: dict,
         indexes: list[tuple[set, str]],
-        first_if: bool,
-        if_generator, #: Callable[list[str], tuple]
-        no_value, #: Callable[list[str], list[str]] | Callable[tuple]
+        options: dict[Any, Any]
     ) -> str:
         if self.check_sparsity(values, [i[0] for i in indexes]):
+            no_value = options["no_value_if"]
+            first_if = True if "first_if" in options and options["first_if"] else False
+            if_generator = options["if_generator"]
             return self.construct_via_if(values, indexes, first_if, if_generator, no_value)
         else:
+            no_value = options["no_value_matrix"]
             return self.construct_explicit(values, indexes, no_value)
 
     def construct_via_if(
@@ -257,8 +331,8 @@ class MiniZincTranslator(Translator):
         values: dict,
         indexes: list[tuple[set, str]],
         first_if: bool,
-        if_generator, #: Callable[list[str], tuple]
-        if_finisher, #: Callable[list[str], list[str]]
+        if_generator: Callable[[list[str], tuple], str],
+        if_finisher: Callable[[list[str], list[str]], str]
     ) -> str:
         names = {}
         cicler_names = []
@@ -282,18 +356,18 @@ class MiniZincTranslator(Translator):
 
         return "\n".join(body)
 
-    def matrix_creator( # TODO: add types
+    def matrix_creator(
         self,
-        batched_indexes,
-        indexes,
-        values,
-        n,
-        no_value
+        batched_indexes: list[tuple],
+        indexes: list[tuple[set, str]],
+        values: dict,
+        n: int,
+        no_value: Callable[[int], str]
     ):
         if n == 1:
             return (
                 "\t" + ", ".join([
-                    str(values[i]) if i in values else no_value(i)
+                    str(values[i]) if i in values else str(no_value(i))
                     for i in batched_indexes
                 ]) + ", % " + str(batched_indexes[0][0])
             )
@@ -316,9 +390,7 @@ class MiniZincTranslator(Translator):
         self,
         values: dict,
         indexes: list[tuple[set, str]],
-        no_value # Callable[tuple]
-        # TODO: no_value is a bit problematic: if it construct a "if" then it
-        # will have 2 parameters, otherwise if matrix it will be one
+        no_value: Callable[[int], str]
     ) -> str:
         only_indexes = list(product(*(i[0] for i in indexes)))
         batched_indexes = only_indexes
