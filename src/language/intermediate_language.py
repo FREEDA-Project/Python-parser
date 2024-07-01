@@ -43,7 +43,6 @@ class IntermediateStructure:
         self.consumable_resource = sorted(list(self.consumable_resource))
         self.non_consumable_resource = sorted(list(self.non_consumable_resource))
         self.resources = self.consumable_resource + self.non_consumable_resource
-        self.resources = ["cpu", "ram", "storage", "bwIn", "bwOut", "ssl", "firewall", "encrypted_storage", "availability", "latency"]
 
     def add_resource(self, r: Resource, resource_name: str = None):
         if resource_name is None:
@@ -58,8 +57,10 @@ class IntermediateStructure:
 
         if r.worst_bound is not None:
             self.worst_bounds[resource_name] = r.worst_bound
+            self.maybe_update_maxbound(r.worst_bound)
         if r.best_bound is not None:
             self.best_bounds[resource_name] = r.best_bound
+            self.maybe_update_maxbound(r.best_bound)
 
     def maybe_update_maxbound(self, value: float):
         if value > self.max_bound:
@@ -183,14 +184,17 @@ class IntermediateStructure:
                     self.node_carb[(node.name, c.resource.name)] = c.carb if c.carb is not None else 0
 
             # If a node cost (or carbon) has all zero values, it means that
-            # there was a single carbon value inside the node itself
+            # there was a single carbon value inside the node itself. Search a
+            # consumable resource to assign the value to
+            a_resource = list(self.non_consumable_resource.union(self.consumable_resource))[0]
             node_cost = [
                 (c, v)
                 for (n, c), v in self.node_cost.items()
                 if n == node.name
             ]
             if all([v == 0 for _, v in node_cost]):
-                self.node_cost[(node.name, node_cost[0][0])] = node.cost
+                self.node_cost[(node.name, a_resource)] = node.cost
+            self.node_cost = OrderedDict({k : v for k, v in self.node_cost.items() if v != 0})
 
             node_carb = [
                 (c, v)
@@ -198,8 +202,7 @@ class IntermediateStructure:
                 if n == node.name
             ]
             if all([v == 0 for _, v in node_carb]):
-                self.node_carb[(node.name, node_carb[0][0])] = node.carb
-
+                self.node_carb[(node.name, a_resource)] = node.carb
             self.node_carb = OrderedDict({k : v for k, v in self.node_carb.items() if v != 0})
 
             # link matrix

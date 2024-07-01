@@ -33,7 +33,7 @@ class Node:
     ):
         self.name = name
         self.capabilities = capabilities
-        self.cost = cost,
+        self.cost = cost
         self.carb = carb
 
 class Link:

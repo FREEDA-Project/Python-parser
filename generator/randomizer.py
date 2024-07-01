@@ -1,18 +1,13 @@
+#!/usr/bin/env python
+
 import argparse
 import random
 import yaml
 import itertools
+import os
+from pathlib import Path
 
 MAX_RESOURCE_VALUE = 1_000
-
-parser = argparse.ArgumentParser(description="Generate test files.")
-parser.add_argument("amount", type=int, help="The number of files to generate")
-parser.add_argument("-o", "--output", type=str, help="Output file")
-parser.add_argument("-c", "--components", type=int, help="Number of components to generate", default=3)
-parser.add_argument("-f", "--flavours", type=int, help="Max number of flavours to generate for each components", default=3)
-parser.add_argument("-n", "--nodes", type=int, help="Number of nodes to generate", default=3)
-parser.add_argument("-r", "--resources", type=int, help="Number of resources to generate", default=8)
-args = parser.parse_args()
 
 def random_sample(l):
     return random.sample(l, k=random.randint(0, len(l)))
@@ -98,8 +93,14 @@ def generate_app(resources, components_amount, flavours_amount):
     application = {
         "name" : "app",
         "components" : {},
-        "requirements" : {},
-        "dependencies" : {}
+        "requirements" : {
+            "components" : {},
+            "dependencies" : {},
+            "budget": {
+                "cost": random.randint(0, 10),
+                "carbon": random.randint(0, 10)
+            }
+        }
     }
 
     components_name = ["component_" + str(c) for c in range(components_amount)]
@@ -138,26 +139,29 @@ def generate_app(resources, components_amount, flavours_amount):
                 len(cons_res_names) - 1 if len(cons_res_names) else 0
             )
         )
-        application["requirements"][c] = {}
-        for r_name in resources_names_common:
-            r = [r for n, r in resources.items() if n == r_name][0]
-            if "choices" in r:
-                value = random_sample(r["choices"])
-            else:
-                value = (
-                    random.randint(r["worst_bound"], r["best_bound"])
-                    if r["optimization"] == "maximization"
-                    else random.randint(r["best_bound"], r["worst_bound"])
-                )
-            application["requirements"][c]["common"] = {
-                r_name : {
-                    "value" : value,
-                    "soft" : bool(random.getrandbits(1))
+        application["requirements"]["components"][c] = {}
+        if len(resources_names_common) > 0:
+            for r_name in resources_names_common:
+                r = [r for n, r in resources.items() if n == r_name][0]
+                if "choices" in r:
+                    value = random_sample(r["choices"])
+                else:
+                    value = (
+                        random.randint(r["worst_bound"], r["best_bound"])
+                        if r["optimization"] == "maximization"
+                        else random.randint(r["best_bound"], r["worst_bound"])
+                    )
+                application["requirements"]["components"][c]["common"] = {
+                    r_name : {
+                        "value" : value,
+                        "soft" : bool(random.getrandbits(1))
+                    }
                 }
-            }
+        else:
+            application["requirements"]["components"][c]["common"] = {}
 
         old_values = {}
-        application["requirements"][c]["flavour-specific"] = {}
+        application["requirements"]["components"][c]["flavour-specific"] = {}
         resources_names_flavour = [r for r in resources.keys() if r not in resources_names_common]
         for f in flavours_names[i_c]:
             for r_name in resources_names_flavour:
@@ -179,7 +183,7 @@ def generate_app(resources, components_amount, flavours_amount):
                             else random.randint(r["best_bound"], old_values[r_name])
                         )
                     old_values[r_name] = value
-                application["requirements"][c]["flavour-specific"][f] = {
+                application["requirements"]["components"][c]["flavour-specific"][f] = {
                     r_name : {
                         "value" : value,
                         "soft" : bool(random.getrandbits(1))
@@ -194,9 +198,9 @@ def generate_app(resources, components_amount, flavours_amount):
         for c, f, u in uses_cleaned:
             u_name = u[0] if isinstance(u[0], str) else u[0]["component"]
 
-            application["dependencies"][c] = {}
-            application["dependencies"][c][f] = {}
-            application["dependencies"][c][f][u_name] = {}
+            application["requirements"]["dependencies"][c] = {}
+            application["requirements"]["dependencies"][c][f] = {}
+            application["requirements"]["dependencies"][c][f][u_name] = {}
             old_value = {}
             for r in resources_names_dep:
                 if (f, u_name, r) in old_value:
@@ -215,7 +219,7 @@ def generate_app(resources, components_amount, flavours_amount):
                         else random.randint(res["best_bound"], res["worst_bound"])
                     )
                     old_values[(f, u_name, r)] = value
-                application["dependencies"][c][f][u_name][r] = {"value" : value}
+                application["requirements"]["dependencies"][c][f][u_name][r] = {"value" : value}
 
     return application
 
@@ -228,23 +232,24 @@ def generate_infrastructure(resources, nodes_amount):
     nodes_name = ["node_" + str(i) for i in range(nodes_amount)]
     cons_res = [(n, r) for n, r in resources.items() if "type" not in r or r["type"] == "consumable"]
     for name in nodes_name:
-        cost = {name : random.randint(0, 100) for name, _ in cons_res}
-        carbon = {name : random.randint(0, 100) for name, _ in cons_res}
         capabilities = {}
-        for name, resource in cons_res:
+        for res_name, resource in cons_res:
             if "choices" in resource:
-                capabilities[name] = resource["choices"]
+                capabilities[res_name] = resource["choices"]
             else:
                 max_bound = max(resource["worst_bound"] * 10, resource["best_bound"] * 10)
                 min_bound = min(resource["worst_bound"] * 10, resource["best_bound"] * 10)
-                capabilities[name] = random.randint(max_bound, min_bound)
+                capabilities[res_name] = random.randint(max_bound, min_bound)
         infrastructure["nodes"][name] = {
             "capabilities" : capabilities,
-            "cost" : cost,
-            "carbon" : carbon
+            "profile" : {
+                "cost" : random.randint(50_000, 100_000),
+                "carbon" : random.randint(50_000, 100_000)
+            }
         }
     non_cons_res = [(n, r) for n, r in resources.items() if "type" in r and r["type"] == "non-consumable"]
-    for from_node, to_node in itertools.product(nodes_name, nodes_name):
+    from_tos = [(i, j) for i, j in itertools.combinations(nodes_name, 2) if i != j]
+    for from_node, to_node in from_tos:
         capabilities = {}
         for name, resource in non_cons_res:
             max_bound = max(resource["worst_bound"], resource["best_bound"])
@@ -258,11 +263,40 @@ def generate_infrastructure(resources, nodes_amount):
 
     return infrastructure
 
-for i in range(args.amount):
-    resources = generate_resources(args.resources)
-    app = generate_app(resources, args.components, args.flavours)
-    infrastructure = generate_infrastructure(resources, args.nodes)
-    # Nodes
-    nodes_name = ["node_" + str(n) for n in range(args.nodes)]
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate test files.")
+    parser.add_argument("amount", type=int, help="The number of files to generate")
+    parser.add_argument("-o", "--output", type=str, help="Location to output files", default=None)
+    parser.add_argument("-c", "--components", type=int, help="Number of components to generate", default=3)
+    parser.add_argument("-f", "--flavours", type=int, help="Max number of flavours to generate for each components", default=3)
+    parser.add_argument("-n", "--nodes", type=int, help="Number of nodes to generate", default=3)
+    parser.add_argument("-r", "--resources", type=int, help="Number of resources to generate", default=8)
+    args = parser.parse_args()
 
-    print(yaml.dump(resources))
+    z_fill_amount = len(str(args.amount - 1))
+
+    for i in range(args.amount):
+        resources = generate_resources(args.resources)
+        app = generate_app(resources, args.components, args.flavours)
+        infrastructure = generate_infrastructure(resources, args.nodes)
+
+        to_write = {
+            "resources.yaml" : resources,
+            "components.yaml" : app,
+            "infrastructure.yaml" : infrastructure
+        }
+
+        if args.output is None:
+            for filename, content in to_write.items():
+                print("############################################")
+                print("# " + filename)
+                print("############################################")
+                print(yaml.dump(content))
+                print()
+        else:
+            generated_path = Path(args.output) / str(i).zfill(z_fill_amount)
+            os.makedirs(generated_path, exist_ok=True)
+
+            for filename, content in to_write.items():
+                with open(generated_path / filename, "w") as f:
+                    yaml.dump(content, f)

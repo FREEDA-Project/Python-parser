@@ -70,6 +70,15 @@ class MiniZincTranslator(Translator):
         self.output.append("costBudget = " + str(struct.cost_budget) + ";")
         self.output.append("carbBudget = " + str(struct.carbon_budget) + ";")
 
+    def make_if_generic(self, struct, ciclers, values):
+        result = []
+        for c, v in zip(ciclers, values):
+            l = "C" if str(v) in struct.consumable_resource else "N"
+            value = v if not c.startswith("r") else l + "(" + str(v) + ")"
+            result.append(c + " = " + value)
+
+        return " /\\ ".join(result)
+
     def make_importance(self, struct, flavours):
         result = "imp = array2d(Comps, Flavs, [\n"
         result += self.construct_element(
@@ -149,11 +158,19 @@ class MiniZincTranslator(Translator):
             (str(c) + "-" + str(f), r) : v
             for (c, f, r), v in struct.component_requirements.items()
         }
-        def make_if_comreq(ciclers: list[str], values: list[str]):
-            return " /\\ ".join(
-                    str(c) + " = " + str(v)
-                    for c, v in zip(ciclers, values)
-            )
+        def make_if_comreq(ciclers, values):
+            result = []
+            for c, v in zip(ciclers, values):
+                if c.startswith("c") and v in self.compflavs:
+                    value = str(self.compflavs.index(v))
+                elif c.startswith("r") and v in struct.consumable_resource:
+                    value = "C(" + v + ")"
+                elif c.startswith("r") and v in struct.non_consumable_resource:
+                    value = "N(" + v + ")"
+
+                result.append(c + " = " + value)
+
+            return " /\\ ".join(result)
         comreq_body = self.construct_element(
             compflavs_comreq,
             [
@@ -163,7 +180,7 @@ class MiniZincTranslator(Translator):
             {
                 "first_if": True,
                 "if_generator": make_if_comreq,
-                "no_value_if": lambda _1, _2 : "else 0",
+                "no_value_if": lambda _1, _2 : "else worstBounds[r1]",
                 "no_value_matrix": lambda r :
                     struct.worst_bounds[r[1]] if r[1] in struct.worst_bounds else struct.best_bounds[r[1]]
             }
@@ -197,19 +214,6 @@ class MiniZincTranslator(Translator):
 
     def make_dependency_requirement(self, struct):
         result = "depReq = array4d(Comps, Flavs, Comps, Res, [\n"
-        def make_if_dependency_requirement(ciclers, values):
-            result = []
-            for c, v in zip(ciclers, values):
-                if str(v) in struct.consumable_resource:
-                    l = "C"
-                else:
-                    l = "N"
-
-                value = v if not c.startswith("r") else l + "(" + str(v) + ")"
-                result.append(c + " = " + value)
-
-            return " /\\ ".join(result)
-
         result += self.construct_element(
             struct.dependencies,
             [
@@ -220,7 +224,7 @@ class MiniZincTranslator(Translator):
             ],
             {
                 "first_if": True,
-                "if_generator": make_if_dependency_requirement,
+                "if_generator": lambda c, v : self.make_if_generic(struct, c, v),
                 "no_value_if": lambda _1, _2 : "else worstBounds[r1]",
                 "no_value_matrix": lambda _ : "MAX_BOUND"
             }
@@ -231,20 +235,6 @@ class MiniZincTranslator(Translator):
         result = "linkCap = array3d(Nodes0, Nodes0, Res, [\n"
         result += " \tif n1 = n2 then\n\t\tnodeCap[n1, r1]\n"
         result += " \telseif n1 = 0 \/ n2 = 0 then\n\t\tbestBounds[r1]" # TODO: this ideally will be compiled and added when we have bestbounds for each resource
-
-        def make_if_link_capacity(ciclers, values):
-            result = []
-            for c, v in zip(ciclers, values):
-                if str(v) in struct.consumable_resource:
-                    l = "C"
-                else:
-                    l = "N"
-
-                value = v if not c.startswith("r") else l + "(" + str(v) + ")"
-                result.append(c + " = " + value)
-
-            return " /\\ ".join(result)
-
         result += "\n" + self.construct_element(
             struct.link_capacity,
             [
@@ -253,7 +243,7 @@ class MiniZincTranslator(Translator):
                 (struct.resources, "Res")
             ],
             {
-                "if_generator": make_if_link_capacity,
+                "if_generator": lambda c, v : self.make_if_generic(struct, c, v),
                 "no_value_if": lambda _1, _2 : "else worstBounds[r1]",
                 "no_value_matrix": lambda _ : "MAX_BOUND"
             }
@@ -270,8 +260,7 @@ class MiniZincTranslator(Translator):
             ],
             {
                 "first_if": True,
-                "if_generator": lambda ciclers, values : " /\\ ".join(
-                    str(c) + " = " + str(v) for c, v in zip(ciclers, values)),
+                "if_generator": lambda c, v : self.make_if_generic(struct, c, v),
                 "no_value_if": lambda _1, _2 : "else 0",
                 "no_value_matrix": lambda _ : "0"
             }
@@ -280,18 +269,6 @@ class MiniZincTranslator(Translator):
 
     def make_carb(self, struct):
         result = "carb = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n"
-        def make_if_carb(ciclers, values):
-            result = []
-            for c, v in zip(ciclers, values):
-                if str(v) in struct.consumable_resource:
-                    l = "C"
-                else:
-                    l = "N"
-
-                value = v if not c.startswith("r") else l + "(" + str(v) + ")"
-                result.append(c + " = " + value)
-
-            return " /\\ ".join(result)
         result += self.construct_element(
             struct.node_carb,
             [
@@ -300,7 +277,7 @@ class MiniZincTranslator(Translator):
             ],
             {
                 "first_if": True,
-                "if_generator": make_if_carb,
+                "if_generator": lambda c, v : self.make_if_generic(struct, c, v),
                 "no_value_if": lambda _1, _2 : "else 0",
                 "no_value_matrix": lambda _ : "0"
             }
@@ -346,13 +323,23 @@ class MiniZincTranslator(Translator):
             cicler_names.append(cicler)
             finisher.append(cicler + " in " + n)
 
+        ending = "| " +  ", ".join(finisher) + "\n]);"
+
         body = []
+
+        if len(values) == 0:
+            body.append(
+                "\t" + if_finisher(cicler_names, [k for k, _ in values.items()])[5:] # remove the else
+            )
+            body.append("\t" + ending)
+            return "\n".join(body)
+
         for i, (ks, v) in enumerate(values.items()):
             first_part = "\tif " if i == 0 and first_if else "\telseif "
             body.append(first_part + if_generator(cicler_names, ks) + " then " + str(v))
 
         body.append("\t" + if_finisher(cicler_names, [k for k, _ in values.items()]))
-        body.append("\tendif | " +  ", ".join(finisher) + "\n]);")
+        body.append("\tendif " + ending)
 
         return "\n".join(body)
 
