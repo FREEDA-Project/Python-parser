@@ -45,6 +45,7 @@ class MiniZincTranslator(Translator):
         self.output.append(self.make_importance(struct, flavours))
 
         self.output.append(self.make_uses(struct))
+        self.output.append(self.make_may_use(struct))
 
         self.output.append("CRes = {" + ", ".join(struct.consumable_resource) + "};")
         self.output.append("NRes = {" + ", ".join(struct.non_consumable_resource) + "};")
@@ -150,6 +151,33 @@ class MiniZincTranslator(Translator):
             }
         )
 
+        return result
+
+    def make_may_use(self, struct):
+        result = "mayUse = array2d(CompFlavs, CompFlavs, ["
+        mayUse = {
+            (ct, str(cf) + "-" + str(ff)) : 1
+            for (cf, ff), (ct, _) in struct.uses.items()
+        }
+        def make_if_may_uses(ciclers: list[str], values: list[str]):
+            return (
+                str(ciclers[0]) + " = " + str(values[0])
+                + " /\\ " +
+                str(ciclers[1]) + " = " + str(self.compflavs.index(values[1]))
+            )
+        result += "\n" + self.construct_element(
+            mayUse,
+            [
+                (struct.components, "Comps"),
+                (self.compflavs, "CompFlavs")
+            ],
+            {
+                "first_if": True,
+                "if_generator": make_if_may_uses,
+                "no_value_if": lambda _1, _2 : "else 0",
+                "no_value_matrix": lambda _ : "0"
+            }
+        )
         return result
 
     def make_component_requirement(self, struct):
@@ -315,11 +343,12 @@ class MiniZincTranslator(Translator):
         cicler_names = []
         finisher = []
         for _, n in indexes:
-            if n not in names:
-                names[n] = 0
-            names[n] += 1
+            name = n[0]
+            if name not in names:
+                names[name] = 0
+            names[name] += 1
 
-            cicler = n[0].lower() + str(names[n])
+            cicler = name.lower() + str(names[name])
             cicler_names.append(cicler)
             finisher.append(cicler + " in " + n)
 
