@@ -46,7 +46,8 @@ def create_components(data, resources: list[Resource]) -> set[Component]:
                     if isinstance(u, dict) else (u, None)
                     for u in f_data["uses"]
                 }
-                flavours.append(Flavour(f_name, uses))
+                importance = f_data["importance"] if "importance" in f_data else None
+                flavours.append(Flavour(f_name, uses, importance))
 
         # Re-order flavour based on (specified) importance
         if "importance_order" in component_data:

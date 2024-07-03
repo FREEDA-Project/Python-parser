@@ -25,10 +25,12 @@ class Flavour:
         self,
         name: str,
         uses: set[tuple[str, str]],
+        importance: int = None
     ):
         self.name = str(name)
         self.uses = uses
         self.requirements = list()
+        self.importance = importance
 
     def add_requirement(self, requirement: Requirement):
         self.requirements.append(requirement)

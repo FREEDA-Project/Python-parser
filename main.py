@@ -25,8 +25,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--flavour-priority",
         "-p",
-        choices=["manual", "min", "max"],
-        default="min",
+        choices=["manual", "lexicographic", "reversed"],
+        default="reversed",
         help="Flavour order choosing strategy",
     )
     args = parser.parse_args()

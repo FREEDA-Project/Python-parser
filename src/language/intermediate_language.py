@@ -72,7 +72,7 @@ class IntermediateStructure:
 
         orders = [c.importance_order for c in components]
         match order_strategy:
-            case "min":
+            case "reversed":
                 for io in orders:
                     for i, flavour in enumerate(io):
                         if isinstance(flavour, list):
@@ -80,7 +80,7 @@ class IntermediateStructure:
                                 F_sets[i].append(f)
                         else:
                             F_sets[i].append(flavour)
-            case "max":
+            case "lexicographic":
                 for io in orders:
                     for i, flavour in zip(range(max_len - len(io), max_len), io):
                         if isinstance(flavour, list):
@@ -91,10 +91,19 @@ class IntermediateStructure:
         return F_sets
 
     def compute_importance(self, components, order_strategy):
+        self.importance = OrderedDict()
+        if order_strategy == "manual":
+            for c in components:
+                for f in c.flavours:
+                    if f.importance is None:
+                        raise AssertionError(f"Manual mode for flavour ordering strategy has been chosen but {c.name} in flavour {f.name} has no importance")
+
+                    self.importance[(c.name, f.name)] = f.importance
+            return
+
         F_sets = self.by_order_strategy(components, order_strategy)
 
         # Followng the definition from the model.pdf file
-        self.importance = OrderedDict()
         for c, imp_ord_list in {c.name : c.importance_order for c in components}.items():
             for i, flav_name in enumerate(imp_ord_list):
                 if isinstance(flav_name, list):
