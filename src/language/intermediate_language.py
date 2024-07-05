@@ -99,6 +99,15 @@ class IntermediateStructure:
                         raise AssertionError(f"Manual mode for flavour ordering strategy has been chosen but {c.name} in flavour {f.name} has no importance")
 
                     self.importance[(c.name, f.name)] = f.importance
+        elif order_strategy == "incremental":
+            for c in components:
+                value = 0
+                for f in c.flavours:
+                    if f.importance is None:
+                        raise AssertionError(f"Manual mode for flavour ordering strategy has been chosen but {c.name} in flavour {f.name} has no importance")
+
+                    self.importance[(c.name, f.name)] = value
+                    value += 1
             return
 
         F_sets = self.by_order_strategy(components, order_strategy)

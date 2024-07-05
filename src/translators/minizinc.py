@@ -262,7 +262,7 @@ class MiniZincTranslator(Translator):
     def make_link_capacity(self, struct):
         result = "linkCap = array3d(Nodes0, Nodes0, Res, [\n"
         result += " \tif n1 = n2 then\n\t\tnodeCap[n1, r1]\n"
-        result += " \telseif n1 = 0 \/ n2 = 0 then\n\t\tbestBounds[r1]" # TODO: this ideally will be compiled and added when we have bestbounds for each resource
+        result += " \telseif n1 = 0 \/ n2 = 0 then\n\t\tbestBounds[r1]"
         result += "\n" + self.construct_element(
             struct.link_capacity,
             [

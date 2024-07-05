@@ -6,9 +6,6 @@ import yaml
 from loader import load_application, load_infrastructure, load_resources
 from src.language.intermediate_language import IntermediateStructure
 from src.translators.minizinc import MiniZincTranslator
-#from translators.pulp import PulpTranslator
-#from translators.smt import SMTTranslator
-#from translators.z3 import Z3Translator
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="FREEDA YAML complier to solver model")
@@ -25,8 +22,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--flavour-priority",
         "-p",
-        choices=["manual", "lexicographic", "reversed"],
-        default="reversed",
+        choices=["incremental", "manual", "lexicographic", "reversed"],
+        default="incremental",
         help="Flavour order choosing strategy",
     )
     args = parser.parse_args()
@@ -62,8 +59,3 @@ if __name__ == "__main__":
     #        raise Exception("Invalid output format")
 
     print(translated.to_string())
-
-
-# TODO:
-# - Define a file with the resources
-# - Find other todos inside the code
