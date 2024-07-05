@@ -30,4 +30,6 @@ Possible options are:
 - `-p`, `--flavour-priority`: specifies the possible proprity strategy for
   flavours. Possible values are: `manual` (meaning that the user must specify
   insidtehe application YAML a total order for each flavour based on the
-  priority), `min` (default) or `max`.
+  priority), `lexicographic`, `reversed` or `incremental` (default).
+- `-r`, `--additional-resources`: specifies a file path to additional resources.
+  An example can be found at `data/resources_example.yaml`.

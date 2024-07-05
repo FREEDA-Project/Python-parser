@@ -1,3 +1,16 @@
+default_resources = {
+    'cpu': {'type': 'consumable', 'optimization': 'minimization', 'worst_bound': 0},
+    'ram': {'type': 'consumable', 'optimization': 'minimization', 'worst_bound': 0},
+    'storage': {'type': 'consumable', 'optimization': 'minimization', 'worst_bound': 0},
+    'bwIn': {'type': 'consumable', 'optimization': 'minimization', 'worst_bound': 0},
+    'bwOut': {'type': 'consumable', 'optimization': 'minimization', 'worst_bound': 0},
+    'security': {
+        'choices': ['ssl', 'firewall', 'encrypted_storage'],
+        'optimization': 'minimization', 'worst_bound': 0},
+    'latency': {'type': 'non-consumable', 'optimization': 'minimization', 'best_bound': 0},
+    'availability': {'type': 'non-consumable', 'optimization': 'maximization', 'best_bound': 100, 'worst_bound': 0}
+}
+
 class Resource:
     def __init__(
         self,

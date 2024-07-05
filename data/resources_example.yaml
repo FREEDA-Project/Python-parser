@@ -1,20 +1,5 @@
+# This is just and example file. Some default resources are already considered
 cpu:
-  type: consumable
-  optimization: minimization
-  worst_bound: 0
-ram:
-  type: consumable
-  optimization: minimization
-  worst_bound: 0
-storage:
-  type: consumable
-  optimization: minimization
-  worst_bound: 0
-bwIn:
-  type: consumable
-  optimization: minimization
-  worst_bound: 0
-bwOut:
   type: consumable
   optimization: minimization
   worst_bound: 0
