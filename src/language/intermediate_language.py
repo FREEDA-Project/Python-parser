@@ -13,7 +13,8 @@ class IntermediateStructure:
         infrastructure: Infrastructure,
         flavour_order_strategy: str
     ) -> None:
-        self.max_bound = 0
+        self.max_bound = None
+        self.min_bound = None
 
         self.app_name = app.name
         self.cost_budget = app.budget.cost
@@ -57,14 +58,16 @@ class IntermediateStructure:
 
         if r.worst_bound is not None:
             self.worst_bounds[resource_name] = r.worst_bound
-            self.maybe_update_maxbound(r.worst_bound)
+            self.maybe_update_bounds(r.worst_bound)
         if r.best_bound is not None:
             self.best_bounds[resource_name] = r.best_bound
-            self.maybe_update_maxbound(r.best_bound)
+            self.maybe_update_bounds(r.best_bound)
 
-    def maybe_update_maxbound(self, value: float):
-        if value > self.max_bound:
-            self.max_bound = value + 1
+    def maybe_update_bounds(self, value: float):
+        if self.max_bound is None or value > self.max_bound:
+            self.max_bound = value
+        if self.min_bound is None or value < self.min_bound:
+            self.min_bound = value
 
     def by_order_strategy(self, components, order_strategy) -> list[set[str]]:
         max_len = max(len(c.flavours) for c in components)
@@ -101,7 +104,7 @@ class IntermediateStructure:
                     self.importance[(c.name, f.name)] = f.importance
         elif order_strategy == "incremental":
             for c in components:
-                value = 0
+                value = 1
                 for f in c.flavours:
                     self.importance[(c.name, f.name)] = value
                     value += 1
@@ -150,11 +153,11 @@ class IntermediateStructure:
                                 raise AssertionError(f"Invalid list resource choice \"{r.resource.name}\" in component {c.name}")
                             self.add_resource(r.resource, e)
                             self.component_requirements[(c.name, f.name, e)] = 1
-                            self.maybe_update_maxbound(1)
+                            self.maybe_update_bounds(1)
                     else:
                         self.add_resource(r.resource)
                         self.component_requirements[(c.name, f.name, r.resource.name)] = r.value
-                        self.maybe_update_maxbound(r.value)
+                        self.maybe_update_bounds(r.value)
 
                 dependencies = [
                     d
@@ -188,13 +191,13 @@ class IntermediateStructure:
                             raise AssertionError(f"Invalid list resource choice \"{c.resource.name}\" in node {node.name}")
                         self.add_resource(c.resource, e)
                         self.node_capabilities[(node.name, e)] = 1
-                        self.maybe_update_maxbound(1)
+                        self.maybe_update_bounds(1)
                         self.node_cost[(node.name, e)] = c.cost if c.cost is not None else 0
                         self.node_carb[(node.name, e)] = c.carb if c.carb is not None else 0
                 else:
                     self.add_resource(c.resource)
                     self.node_capabilities[(node.name, c.resource.name)] = c.value
-                    self.maybe_update_maxbound(c.value)
+                    self.maybe_update_bounds(c.value)
                     self.node_cost[(node.name, c.resource.name)] = c.cost if c.cost is not None else 0
                     self.node_carb[(node.name, c.resource.name)] = c.carb if c.carb is not None else 0
 

@@ -65,9 +65,6 @@ class MiniZincTranslator(Translator):
 
         self.output.append(self.make_carb(struct))
 
-        self.output.append("costWeight = 0;")
-        self.output.append("carbWeight = 1;")
-
         self.output.append("costBudget = " + str(struct.cost_budget) + ";")
         self.output.append("carbBudget = " + str(struct.carbon_budget) + ";")
 
@@ -101,7 +98,8 @@ class MiniZincTranslator(Translator):
         return result
 
     def make_resources_bounds(self, struct):
-        result = "MAX_BOUND = " + str(struct.max_bound) + ";\n"
+        result = "MAX_RBOUNDS = " + str(struct.max_bound) + ";\n"
+        result += "MIN_RBOUNDS = " + str(struct.min_bound) + ";\n"
         worst_list = []
         best_list = []
         for r in struct.resources:
@@ -154,7 +152,7 @@ class MiniZincTranslator(Translator):
         return result
 
     def make_may_use(self, struct):
-        result = "mayUse = array2d(CompFlavs, CompFlavs, ["
+        result = "mayUse = array2d(Comps, CompFlavs, ["
         mayUse = {
             (ct, str(cf) + "-" + str(ff)) : 1
             for (cf, ff), (ct, _) in struct.uses.items()
