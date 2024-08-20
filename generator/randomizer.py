@@ -7,7 +7,7 @@ import itertools
 import os
 from pathlib import Path
 
-MAX_RESOURCE_VALUE = 1_000
+MAX_RESOURCE_VALUE = 100
 
 def random_sample(l):
     return random.sample(l, k=random.randint(0, len(l)))
@@ -97,8 +97,8 @@ def generate_app(resources, components_amount, flavours_amount):
             "components" : {},
             "dependencies" : {},
             "budget": {
-                "cost": random.randint(0, 10),
-                "carbon": random.randint(0, 10)
+                "cost": 2_000_000, #random.randint(0, 1_000_000),
+                "carbon": 2_000_000 #random.randint(0, 10)
             }
         }
     }
@@ -243,8 +243,8 @@ def generate_infrastructure(resources, nodes_amount):
         infrastructure["nodes"][name] = {
             "capabilities" : capabilities,
             "profile" : {
-                "cost" : random.randint(50_000, 100_000),
-                "carbon" : random.randint(50_000, 100_000)
+                "cost" : random.randint(500, 1000),
+                "carbon" : random.randint(500, 1000)
             }
         }
     non_cons_res = [(n, r) for n, r in resources.items() if "type" in r and r["type"] == "non-consumable"]

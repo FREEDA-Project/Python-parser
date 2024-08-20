@@ -218,10 +218,14 @@ class MiniZincTranslator(Translator):
         result = "nodeCap = array2d(Nodes0, Res,\n"
         result += "\t[bestBounds[r] | r in Res] ++ [ % No node\n"
         def make_if_node_cap(ciclers: list[str], values: list[str]):
-            return " /\\ ".join(
-                    str(c) + " = " + str(v)
-                    for c, v in zip(ciclers, values)
-            )
+            result = []
+            for c, v in zip(ciclers, values):
+                value = v
+                if c.startswith("r") and v in struct.non_consumable_resource:
+                    value = "N(" + v + ")"
+                result.append(c + " = " + value)
+            return " /\\ ".join(result)
+
         node_cap = self.construct_element(
             struct.node_capabilities,
             [
@@ -261,18 +265,16 @@ class MiniZincTranslator(Translator):
         result = "linkCap = array3d(Nodes0, Nodes0, Res, [\n"
         result += " \tif n1 = n2 then\n\t\tnodeCap[n1, r1]\n"
         result += " \telseif n1 = 0 \/ n2 = 0 then\n\t\tbestBounds[r1]"
-        result += "\n" + self.construct_element(
+        result += self.construct_via_if(
             struct.link_capacity,
             [
                 (struct.nodes, "Nodes0"),
                 (struct.nodes, "Nodes0"),
                 (struct.resources, "Res")
             ],
-            {
-                "if_generator": lambda c, v : self.make_if_generic(struct, c, v),
-                "no_value_if": lambda _1, _2 : "else worstBounds[r1]",
-                "no_value_matrix": lambda _ : "MAX_BOUND"
-            }
+            False,
+            lambda c, v : self.make_if_generic(struct, c, v),
+            lambda _1, _2 : "else\n\t\tworstBounds[r1]"
         )
         return result
 
@@ -354,10 +356,18 @@ class MiniZincTranslator(Translator):
 
         body = []
 
-        if len(values) == 0:
+        if len(values) == 0 and first_if:
             body.append(
                 "\t" + if_finisher(cicler_names, [k for k, _ in values.items()])[5:] # remove the else
             )
+            body.append("\t" + ending)
+            return "\n".join(body)
+
+        if len(values) == 0 and not first_if:
+            body.append(
+                "\n\t" + if_finisher(cicler_names, [k for k, _ in values.items()])
+            )
+            body.append("\tendif")
             body.append("\t" + ending)
             return "\n".join(body)
 
