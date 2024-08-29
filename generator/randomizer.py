@@ -263,33 +263,46 @@ def generate_infrastructure(resources, nodes_amount):
 
     return infrastructure
 
+def randomize(amount, components, flavours, res, nodes):
+    result = []
+    for _ in range(amount):
+        resources = generate_resources(res)
+        app = generate_app(resources, components, flavours)
+        infrastructure = generate_infrastructure(resources, nodes)
+
+        result.append({
+            "resources" : resources,
+            "components" : app,
+            "infrastructure" : infrastructure
+        })
+
+    return result
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate test files.")
     parser.add_argument("amount", type=int, help="The number of files to generate")
     parser.add_argument("-o", "--output", type=str, help="Location to output files", default=None)
     parser.add_argument("-c", "--components", type=int, help="Number of components to generate", default=3)
     parser.add_argument("-f", "--flavours", type=int, help="Max number of flavours to generate for each components", default=3)
-    parser.add_argument("-n", "--nodes", type=int, help="Number of nodes to generate", default=3)
     parser.add_argument("-r", "--resources", type=int, help="Number of resources to generate", default=8)
+    parser.add_argument("-n", "--nodes", type=int, help="Number of nodes to generate", default=3)
     args = parser.parse_args()
 
     z_fill_amount = len(str(args.amount - 1))
 
-    for i in range(args.amount):
-        resources = generate_resources(args.resources)
-        app = generate_app(resources, args.components, args.flavours)
-        infrastructure = generate_infrastructure(resources, args.nodes)
+    results = randomize(
+        amount = args.amount,
+        components = args.components,
+        flavours = args.flavours,
+        resources = args.resources,
+        nodes = args.nodes
+    )
 
-        to_write = {
-            "resources.yaml" : resources,
-            "components.yaml" : app,
-            "infrastructure.yaml" : infrastructure
-        }
-
+    for i, r in enumerate(results):
         if args.output is None:
-            for filename, content in to_write.items():
+            for filename, content in r.items():
                 print("############################################")
-                print("# " + filename)
+                print("# " + filename + ".yaml")
                 print("############################################")
                 print(yaml.dump(content))
                 print()
@@ -297,6 +310,6 @@ if __name__ == "__main__":
             generated_path = Path(args.output) / str(i).zfill(z_fill_amount)
             os.makedirs(generated_path, exist_ok=True)
 
-            for filename, content in to_write.items():
-                with open(generated_path / filename, "w") as f:
+            for filename, content in r.items():
+                with open(generated_path / (filename + ".yaml"), "w") as f:
                     yaml.dump(content, f)

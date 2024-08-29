@@ -1,63 +1,69 @@
 #!/usr/bin/env python
 
 import argparse
-import itertools
-import subprocess
 from pathlib import Path
 import os
+import sys
 
-if __name__ == "__main__":
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+import randomizer
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
+import main
+
+def single_randomizer_generator(raw_args=None):
     parser = argparse.ArgumentParser(description="Generate test files.")
-    parser.add_argument(
-        "-a",
-        "--amount",
-        type=int,
-        help="The number of times to repeat each test",
-        default=3
-    )
-    parser.add_argument(
-        "-m",
-        "--max",
-        type=int,
-        help="Max value for the generation of components, nodes, flavours and resources",
-        default=3
-    )
+    parser.add_argument("amount", type=int, help="The number of files to generate")
+    parser.add_argument("-o", "--output", type=str, help="Location to output file", default=None)
+    parser.add_argument("-c", "--components", type=int, help="Number of components to generate", default=3)
+    parser.add_argument("-f", "--flavours", type=int, help="Max number of flavours to generate for each components", default=3)
+    parser.add_argument("-n", "--nodes", type=int, help="Number of nodes to generate", default=3)
+    parser.add_argument("-r", "--resources", type=int, help="Number of resources to generate", default=8)
     args = parser.parse_args()
 
-    processes = []
-    generated_top_folder = (Path(__file__).parent.parent / "data").resolve()
-    for (cs, fs, ns, rs) in itertools.product(range(1, args.max + 1), repeat=4):
-        folder_name = "c" + str(cs) + "_f" + str(fs) + "_n" + str(ns) + "_r" + str(rs)
+    instance_name = f"c{args.components}_f{args.flavours}_n{args.nodes}_r{args.resources}"
+    try:
+        results = randomizer.randomize(
+            args.amount,
+            args.components,
+            args.flavours,
+            args.nodes,
+            args.resources
+        )
+    except Exception as e:
+        print(
+            "Unable to generate any of",
+            instance_name,
+            "the following exception occured: \n"
+        )
+        raise e
 
-        processes.append(subprocess.Popen([
-            (Path(__file__).parent.parent / "randomizer.py").resolve(),
-            str(args.amount),
-            "-c", str(cs),
-            "-f", str(fs),
-            "-n", str(ns),
-            "-r", str(rs),
-            "-o", (generated_top_folder / folder_name)
-        ]))
+    dzns = []
+    for r in results:
+        try:
+            dzns.append(main.main(
+                components_data = r["components"],
+                infrastructure_data = r["infrastructure"],
+                format = "minizinc",
+                priority = "incremental",
+                additional_resources_data = r["resources"]
+            ))
+        except Exception as e:
+            print(
+                "Unable to generate any of",
+                instance_name,
+                "the following exception occured: \n"
+            )
+            raise e
 
-    [p.wait() for p in processes]
+    top_folder = Path(args.output)
+    if args.output is None:
+        top_folder = (Path(__file__).parent.parent / "data").resolve()
 
-    for folder in os.listdir(generated_top_folder):
-        top_folder = Path(generated_top_folder) / folder
-        if os.path.isdir(top_folder):
-            for e in os.listdir(top_folder):
-                e_folder = Path(generated_top_folder) / folder / e
-                process = subprocess.run([
-                    (Path(__file__).parent.parent.parent / "main.py").resolve(),
-                    e_folder / "components.yaml",
-                    e_folder / "infrastructure.yaml",
-                    "--format=minizinc",
-                    "-p", "incremental",
-                    "-r", e_folder / "resources.yaml",
-                ], stdout=subprocess.PIPE, text=True)
+    for i, dzn in enumerate(dzns):
+        filename = instance_name + f"_{i}.dzn"
+        with open(top_folder / filename, "w") as f:
+            f.write(dzn)
 
-                if process.returncode != 0:
-                    continue
-
-                filename = folder + "_" + e + ".dzn"
-                with open(e_folder / filename, "w") as f:
-                    f.write(process.stdout)
+if __name__ == "__main__":
+    single_randomizer_generator()
