@@ -41,49 +41,48 @@ def generate_resources(amount):
             weights=[0.5, 0.25, 0.25]
         )
         r = {}
-        match kind[0]:
-            case "non-consumable":
-                bounds = (
-                    random.randint(MAX_RESOURCE_VALUE / 4, MAX_RESOURCE_VALUE / 2),
-                    random.randint(MAX_RESOURCE_VALUE / 2, MAX_RESOURCE_VALUE),
-                )
-                if bool(random.getrandbits(1)):
-                    optimization = "maximization"
-                    bound_dict = {"best_bound" : bounds[1], "worst_bound" : bounds[0]}
-                else:
-                    optimization = "minimization"
-                    bound_dict = {"best_bound" : bounds[0], "worst_bound" : bounds[1]}
-                r.update({
-                    "type" : "non-consumable",
-                    "optimization" : optimization
-                })
-                r.update(bound_dict)
-            case "consumable":
-                bounds = (
-                    random.randint(MAX_RESOURCE_VALUE / 4, MAX_RESOURCE_VALUE / 2),
-                    random.randint(MAX_RESOURCE_VALUE / 2, MAX_RESOURCE_VALUE),
-                )
-                r.update({
-                    "type" : "non-consumable",
-                    "optimization" : "minimization",
-                    "best_bound" : bounds[0],
-                    "worst_bound" : bounds[1]
-                })
-            case "list":
-                if bool(random.getrandbits(1)):
-                    optimization = "maximization"
-                    bound = {"best_bound" : 1, "worst_bound" : 0}
-                else:
-                    optimization = "minimization"
-                    bound = {"best_bound" : 0, "worst_bound" : 1}
-                r.update({
-                    "choices" : [
-                        name + "_" + str(i)
-                        for i in range(random.randint(0, amount))
-                    ],
-                    "optimization" : optimization,
-                })
-                r.update(bound)
+        if kind[0] == "non-consumable":
+            bounds = (
+                random.randint(MAX_RESOURCE_VALUE / 4, MAX_RESOURCE_VALUE / 2),
+                random.randint(MAX_RESOURCE_VALUE / 2, MAX_RESOURCE_VALUE),
+            )
+            if bool(random.getrandbits(1)):
+                optimization = "maximization"
+                bound_dict = {"best_bound" : bounds[1], "worst_bound" : bounds[0]}
+            else:
+                optimization = "minimization"
+                bound_dict = {"best_bound" : bounds[0], "worst_bound" : bounds[1]}
+            r.update({
+                "type" : "non-consumable",
+                "optimization" : optimization
+            })
+            r.update(bound_dict)
+        elif kind[0] == "consumable":
+            bounds = (
+                random.randint(MAX_RESOURCE_VALUE / 4, MAX_RESOURCE_VALUE / 2),
+                random.randint(MAX_RESOURCE_VALUE / 2, MAX_RESOURCE_VALUE),
+            )
+            r.update({
+                "type" : "non-consumable",
+                "optimization" : "minimization",
+                "best_bound" : bounds[0],
+                "worst_bound" : bounds[1]
+            })
+        elif kind[0] == "list":
+            if bool(random.getrandbits(1)):
+                optimization = "maximization"
+                bound = {"best_bound" : 1, "worst_bound" : 0}
+            else:
+                optimization = "minimization"
+                bound = {"best_bound" : 0, "worst_bound" : 1}
+            r.update({
+                "choices" : [
+                    name + "_" + str(i)
+                    for i in range(random.randint(0, amount))
+                ],
+                "optimization" : optimization,
+            })
+            r.update(bound)
 
         resources[name] = r
 

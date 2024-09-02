@@ -27,17 +27,10 @@ def main(
         priority
     )
 
-    match format:
-        case "minizinc":
-            translated = MiniZincTranslator(intermediate_structure)
-    #    case "smt":
-    #        translated = SMTTranslator(intermediate_structure)
-    #    case "pulp":
-    #        translated = PulpTranslator(intermediate_structure)
-    #    case "z3":
-    #        translated = Z3Translator(intermediate_structure)
-    #    case _:
-    #        raise Exception("Invalid output format")
+    if format == "minizinc":
+        translated = MiniZincTranslator(intermediate_structure)
+    else:
+        raise Exception("Invalid output format")
 
     return translated.to_string()
 

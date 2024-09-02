@@ -74,23 +74,22 @@ class IntermediateStructure:
         F_sets = [[] for _ in range(max_len)]
 
         orders = [c.importance_order for c in components]
-        match order_strategy:
-            case "reversed":
-                for io in orders:
-                    for i, flavour in enumerate(io):
-                        if isinstance(flavour, list):
-                            for f in flavour:
-                                F_sets[i].append(f)
-                        else:
-                            F_sets[i].append(flavour)
-            case "lexicographic":
-                for io in orders:
-                    for i, flavour in zip(range(max_len - len(io), max_len), io):
-                        if isinstance(flavour, list):
-                            for f in flavour:
-                                F_sets[i].append(f)
-                        else:
-                            F_sets[i].append(flavour)
+        if order_strategy == "reversed":
+            for io in orders:
+                for i, flavour in enumerate(io):
+                    if isinstance(flavour, list):
+                        for f in flavour:
+                            F_sets[i].append(f)
+                    else:
+                        F_sets[i].append(flavour)
+        elif order_strategy == "lexicographic":
+            for io in orders:
+                for i, flavour in zip(range(max_len - len(io), max_len), io):
+                    if isinstance(flavour, list):
+                        for f in flavour:
+                            F_sets[i].append(f)
+                    else:
+                        F_sets[i].append(flavour)
         return F_sets
 
     def compute_importance(self, components, order_strategy):
