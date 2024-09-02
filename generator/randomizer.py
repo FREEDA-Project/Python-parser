@@ -7,7 +7,8 @@ import itertools
 import os
 from pathlib import Path
 
-MAX_RESOURCE_VALUE = 100
+MAX_RESOURCE_VALUE = 1_000
+REQUIREMENTS_SCALING_FACTOR = 100
 
 def random_sample(l):
     return random.sample(l, k=random.randint(0, len(l)))
@@ -41,11 +42,11 @@ def generate_resources(amount):
             weights=[0.5, 0.25, 0.25]
         )
         r = {}
+        bounds = (
+            random.randint(0, MAX_RESOURCE_VALUE / 10),
+            random.randint(MAX_RESOURCE_VALUE - (MAX_RESOURCE_VALUE / 10), MAX_RESOURCE_VALUE),
+        )
         if kind[0] == "non-consumable":
-            bounds = (
-                random.randint(MAX_RESOURCE_VALUE / 4, MAX_RESOURCE_VALUE / 2),
-                random.randint(MAX_RESOURCE_VALUE / 2, MAX_RESOURCE_VALUE),
-            )
             if bool(random.getrandbits(1)):
                 optimization = "maximization"
                 bound_dict = {"best_bound" : bounds[1], "worst_bound" : bounds[0]}
@@ -58,10 +59,6 @@ def generate_resources(amount):
             })
             r.update(bound_dict)
         elif kind[0] == "consumable":
-            bounds = (
-                random.randint(MAX_RESOURCE_VALUE / 4, MAX_RESOURCE_VALUE / 2),
-                random.randint(MAX_RESOURCE_VALUE / 2, MAX_RESOURCE_VALUE),
-            )
             r.update({
                 "type" : "non-consumable",
                 "optimization" : "minimization",
@@ -146,9 +143,14 @@ def generate_app(resources, components_amount, flavours_amount):
                     value = random_sample(r["choices"])
                 else:
                     value = (
-                        random.randint(r["worst_bound"], r["best_bound"])
-                        if r["optimization"] == "maximization"
-                        else random.randint(r["best_bound"], r["worst_bound"])
+                        random.randint(
+                            r["worst_bound"] / REQUIREMENTS_SCALING_FACTOR,
+                            r["best_bound"] / REQUIREMENTS_SCALING_FACTOR
+                        ) if r["optimization"] == "maximization"
+                        else random.randint(
+                            r["best_bound"] / REQUIREMENTS_SCALING_FACTOR,
+                            r["worst_bound"] / REQUIREMENTS_SCALING_FACTOR
+                        )
                     )
                 application["requirements"]["components"][c]["common"] = {
                     r_name : {
@@ -170,16 +172,26 @@ def generate_app(resources, components_amount, flavours_amount):
                 else:
                     if r_name not in old_values:
                         value = (
-                            random.randint(r["worst_bound"], r["best_bound"])
-                            if r["optimization"] == "maximization"
-                            else random.randint(r["best_bound"], r["worst_bound"])
+                            random.randint(
+                                int(r["worst_bound"] / REQUIREMENTS_SCALING_FACTOR),
+                                int(r["best_bound"] / REQUIREMENTS_SCALING_FACTOR)
+                            ) if r["optimization"] == "maximization"
+                            else random.randint(
+                                int(r["best_bound"] / REQUIREMENTS_SCALING_FACTOR),
+                                int(r["worst_bound"] / REQUIREMENTS_SCALING_FACTOR)
+                            )
                         )
                         old_values[r_name] = value
                     else:
                         value = (
-                            random.randint(old_values[r_name], r["best_bound"])
-                            if r["optimization"] == "maximization"
-                            else random.randint(r["best_bound"], old_values[r_name])
+                            random.randint(
+                                old_values[r_name],
+                                int(r["best_bound"] / REQUIREMENTS_SCALING_FACTOR)
+                            ) if r["optimization"] == "maximization"
+                            else random.randint(
+                                int(r["best_bound"] / REQUIREMENTS_SCALING_FACTOR),
+                                old_values[r_name]
+                            )
                         )
                     old_values[r_name] = value
                 application["requirements"]["components"][c]["flavour-specific"][f] = {
@@ -205,17 +217,27 @@ def generate_app(resources, components_amount, flavours_amount):
                 if (f, u_name, r) in old_value:
                     res = [r for n, r in resources.items() if n == r][0]
                     value = (
-                        random.randint(old_values[(f, u_name, r)], res["best_bound"])
-                        if res["optimization"] == "maximization"
-                        else random.randint(res["best_bound"], old_values[(f, u, r)])
+                        random.randint(
+                            old_values[(f, u_name, r)],
+                            int(res["best_bound"] / REQUIREMENTS_SCALING_FACTOR)
+                        ) if res["optimization"] == "maximization"
+                        else random.randint(
+                            int(res["best_bound"] / REQUIREMENTS_SCALING_FACTOR),
+                            old_values[(f, u, r)]
+                        )
                     )
                     old_values[(f, u_name, r)] = value
                 else:
                     res = [res for n, res in resources.items() if n == r][0]
                     value = (
-                        random.randint(res["worst_bound"], res["best_bound"])
-                        if res["optimization"] == "maximization"
-                        else random.randint(res["best_bound"], res["worst_bound"])
+                        random.randint(
+                            int(res["worst_bound"] / REQUIREMENTS_SCALING_FACTOR),
+                            int(res["best_bound"] / REQUIREMENTS_SCALING_FACTOR)
+                        ) if res["optimization"] == "maximization"
+                        else random.randint(
+                            int(res["best_bound"] / REQUIREMENTS_SCALING_FACTOR),
+                            int(res["worst_bound"] / REQUIREMENTS_SCALING_FACTOR)
+                        )
                     )
                     old_values[(f, u_name, r)] = value
                 application["requirements"]["dependencies"][c][f][u_name][r] = {"value" : value}
@@ -236,14 +258,14 @@ def generate_infrastructure(resources, nodes_amount):
             if "choices" in resource:
                 capabilities[res_name] = resource["choices"]
             else:
-                max_bound = max(resource["worst_bound"] * 10, resource["best_bound"] * 10)
-                min_bound = min(resource["worst_bound"] * 10, resource["best_bound"] * 10)
+                max_bound = max(resource["worst_bound"] * 1000, resource["best_bound"] * 1000)
+                min_bound = min(resource["worst_bound"] * 1000, resource["best_bound"] * 1000)
                 capabilities[res_name] = random.randint(max_bound, min_bound)
         infrastructure["nodes"][name] = {
             "capabilities" : capabilities,
             "profile" : {
-                "cost" : random.randint(500, 1000),
-                "carbon" : random.randint(500, 1000)
+                "cost" : random.randint(1, 10),
+                "carbon" : random.randint(1, 10)
             }
         }
     non_cons_res = [(n, r) for n, r in resources.items() if "type" in r and r["type"] == "non-consumable"]
@@ -293,7 +315,7 @@ if __name__ == "__main__":
         amount = args.amount,
         components = args.components,
         flavours = args.flavours,
-        resources = args.resources,
+        res = args.resources,
         nodes = args.nodes
     )
 
