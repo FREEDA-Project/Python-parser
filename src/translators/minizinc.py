@@ -243,12 +243,13 @@ class MiniZincTranslator(Translator):
         return result
 
     def make_dependency_requirement(self, struct):
+        flavs = list({f for flavs in struct.flavours.values() for f in flavs})
         result = "depReq = array4d(Comps, Flavs, Comps, Res, [\n"
         result += self.construct_element(
             struct.dependencies,
             [
                 (struct.components, "Comps"),
-                (struct.flavours, "Flavs"),
+                (flavs, "Flavs"),
                 (struct.components, "Comps"),
                 (struct.resources, "Res")
             ],
@@ -256,27 +257,57 @@ class MiniZincTranslator(Translator):
                 "first_if": True,
                 "if_generator": lambda c, v : self.make_if_generic(struct, c, v),
                 "no_value_if": lambda _1, _2 : "else worstBounds[r1]",
-                "no_value_matrix": lambda _ : "MAX_BOUND"
+                "no_value_matrix": lambda indexes : struct.worst_bounds[indexes[-1]]
             }
         )
         return result
 
     def make_link_capacity(self, struct):
+        for n in struct.nodes:
+            for r in struct.resources:
+                struct.link_capacity[(n, '0', r)] = struct.best_bounds[r]
+                struct.link_capacity[('0', n, r)] = struct.best_bounds[r]
+                if (n, n, r) not in struct.link_capacity.keys():
+                    if (n, r) in struct.node_capabilities:
+                        struct.link_capacity[(n, n, r)] = struct.node_capabilities[(n, r)]
+                    else:
+                        struct.link_capacity[(n, n, r)] = '0'
+
         result = "linkCap = array3d(Nodes0, Nodes0, Res, [\n"
-        result += " \tif n1 = n2 then\n\t\tnodeCap[n1, r1]\n"
-        result += " \telseif n1 = 0 \/ n2 = 0 then\n\t\tbestBounds[r1]"
-        result += self.construct_via_if(
+        result += self.construct_element(
             struct.link_capacity,
             [
-                (struct.nodes, "Nodes0"),
-                (struct.nodes, "Nodes0"),
+                (['0'] + struct.nodes, "Nodes0"),
+                (['0'] + struct.nodes, "Nodes0"),
                 (struct.resources, "Res")
             ],
-            False,
-            lambda c, v : self.make_if_generic(struct, c, v),
-            lambda _1, _2 : "else\n\t\tworstBounds[r1]"
+            {
+                "first_if": True,
+                "if_generator": lambda c, v : self.make_if_generic(struct, c, v),
+                "no_value_if": lambda _1, _2 : "else worstBounds[r1]",
+                "no_value_matrix": lambda indexes : struct.worst_bounds[indexes[-1]]
+            }
         )
         return result
+
+    # commented out: this function can generate if version of matrices but it is
+    # slower to parse than to put the matrix itself
+    #def make_link_capacity(self, struct):
+    #    result = "linkCap = array3d(Nodes0, Nodes0, Res, [\n"
+    #    result += " \tif n1 = n2 then\n\t\tnodeCap[n1, r1]\n"
+    #    result += " \telseif n1 = 0 \/ n2 = 0 then\n\t\tbestBounds[r1]"
+    #    result += self.construct_via_if(
+    #        struct.link_capacity,
+    #        [
+    #            (struct.nodes, "Nodes0"),
+    #            (struct.nodes, "Nodes0"),
+    #            (struct.resources, "Res")
+    #        ],
+    #        False,
+    #        lambda c, v : self.make_if_generic(struct, c, v),
+    #        lambda _1, _2 : "else\n\t\tworstBounds[r1]"
+    #    )
+    #    return result
 
     def make_cost(self, struct):
         result = "cost = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n"
@@ -322,12 +353,14 @@ class MiniZincTranslator(Translator):
         indexes: list[tuple[set, str]],
         options: dict[Any, Any]
     ) -> str:
-        if self.check_sparsity(values, [i[0] for i in indexes]):
-            no_value = options["no_value_if"]
-            first_if = True if "first_if" in options and options["first_if"] else False
-            if_generator = options["if_generator"]
-            return self.construct_via_if(values, indexes, first_if, if_generator, no_value)
-        else:
+        # commented out: this function can generate if version of matrices but it is
+        # slower to parse than to put the matrix itself
+        #if self.check_sparsity(values, [i[0] for i in indexes]):
+        #    no_value = options["no_value_if"]
+        #    first_if = True if "first_if" in options and options["first_if"] else False
+        #    if_generator = options["if_generator"]
+        #    return self.construct_via_if(values, indexes, first_if, if_generator, no_value)
+        #else:
             no_value = options["no_value_matrix"]
             return self.construct_explicit(values, indexes, no_value)
 
@@ -393,22 +426,28 @@ class MiniZincTranslator(Translator):
                 "\t" + ", ".join([
                     str(values[i]) if i in values else str(no_value(i))
                     for i in batched_indexes
-                ]) + ", % " + str(batched_indexes[0][0])
+                ]) + ", % " + str(batched_indexes[0][-2])
             )
         if n == 2:
             return (
-                "\t%" + ", ".join(indexes[n - 1][0]) + "\n" +
+                "\t%" + ", ".join(indexes[-1][0]) + "\n" +
                 "\n".join([
                     self.matrix_creator(i, indexes, values, n - 1, no_value)
                     for i in batched_indexes
                 ])
             )
 
-        for e in batched_indexes:
-            return (
-                "% " + str(indexes[n - 1][0]) +
-                "\n" + self.matrix_creator(e, indexes, values, n - 1, no_value)
+        result = ""
+        for i, e in enumerate(batched_indexes):
+            idxs = indexes[0][0]
+            idx = list(idxs.keys())[i] if isinstance(idxs, dict) else idxs[i]
+
+            result += (
+                "\n\t% " + idx +
+                "\n" + self.matrix_creator(e, indexes[1:], values, n - 1, no_value) +
+                "\n"
             )
+        return result
 
     def construct_explicit(
         self,
