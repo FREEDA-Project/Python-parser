@@ -3,9 +3,11 @@
 import argparse
 import random
 import yaml
-import itertools
 import os
+import functools
 from pathlib import Path
+
+import networkx as nx
 
 MAX_RESOURCE_VALUE = 1_000
 REQUIREMENTS_SCALING_FACTOR = 100
@@ -244,13 +246,15 @@ def generate_app(resources, components_amount, flavours_amount):
 
     return application
 
-def generate_infrastructure(resources, nodes_amount):
+def generate_infrastructure(resources, nodes_amount, topology_generator_fn):
+    node_name_prefix = "node_"
+
     infrastructure = {
         "name" : "infrastructure",
         "nodes" : {},
         "links" : list()
     }
-    nodes_name = ["node_" + str(i) for i in range(nodes_amount)]
+    nodes_name = [node_name_prefix + str(i) for i in range(nodes_amount)]
     cons_res = [(n, r) for n, r in resources.items() if "type" not in r or r["type"] == "consumable"]
     for name in nodes_name:
         capabilities = {}
@@ -269,7 +273,8 @@ def generate_infrastructure(resources, nodes_amount):
             }
         }
     non_cons_res = [(n, r) for n, r in resources.items() if "type" in r and r["type"] == "non-consumable"]
-    from_tos = [(i, j) for i, j in itertools.combinations(nodes_name, 2) if i != j]
+    graph = topology_generator_fn()
+    from_tos = [("node_" + str(ef), "node_" + str(et)) for ef, et in graph.edges()]
     for from_node, to_node in from_tos:
         capabilities = {}
         for name, resource in non_cons_res:
@@ -284,12 +289,23 @@ def generate_infrastructure(resources, nodes_amount):
 
     return infrastructure
 
-def randomize(amount, components, flavours, res, nodes):
+def randomize(
+    amount,
+    components,
+    flavours,
+    res,
+    nodes,
+    infrastructure_topology_generator_fn
+):
     result = []
     for _ in range(amount):
         resources = generate_resources(res)
         app = generate_app(resources, components, flavours)
-        infrastructure = generate_infrastructure(resources, nodes)
+        infrastructure = generate_infrastructure(
+            resources,
+            nodes,
+            infrastructure_topology_generator_fn
+        )
 
         result.append({
             "resources" : resources,
@@ -307,7 +323,56 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--flavours", type=int, help="Max number of flavours to generate for each components", default=3)
     parser.add_argument("-r", "--resources", type=int, help="Number of resources to generate", default=8)
     parser.add_argument("-n", "--nodes", type=int, help="Number of nodes to generate", default=3)
+    parser.add_argument(
+        "-i",
+        "--infrastructure-graph",
+        type=str,
+        help="Graph type for the infrastructure",
+        choices=[
+            "barabasi_albert",
+            "erdos_renyi",
+            "gn",
+            "gnc",
+            "complete",
+            "ladder",
+            "cycle",
+            "path",
+            "star",
+            "wheel"
+        ],
+        default="complete"
+    )
+
     args = parser.parse_args()
+
+    nodes = args.nodes
+    infrastructure_topology = getattr(nx, args.infrastructure_graph + "_graph")
+
+    if args.infrastructure_graph == "barabasi_albert":
+        infrastructure_topology = functools.partial(
+            infrastructure_topology,
+            m=random.randint(nodes // 2, args.nodes)
+        )
+    elif args.infrastructure_graph == "erdos_renyi":
+        infrastructure_topology = functools.partial(
+            infrastructure_topology,
+            p=0.5
+        )
+    elif args.infrastructure_graph == "star":
+        infrastructure_topology = functools.partial(
+            infrastructure_topology,
+            nodes - 1
+        )
+    elif args.infrastructure_graph == "ladder":
+        infrastructure_topology = functools.partial(
+            infrastructure_topology,
+            args.nodes // 2
+        )
+    else:
+        infrastructure_topology = functools.partial(
+            infrastructure_topology,
+            nodes
+        )
 
     z_fill_amount = len(str(args.amount - 1))
 
@@ -316,7 +381,8 @@ if __name__ == "__main__":
         components = args.components,
         flavours = args.flavours,
         res = args.resources,
-        nodes = args.nodes
+        nodes = nodes,
+        infrastructure_topology_generator_fn = infrastructure_topology
     )
 
     for i, r in enumerate(results):
