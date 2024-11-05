@@ -26,6 +26,7 @@ class IntermediateStructure:
         self.uses = OrderedDict()
         self.consumable_resource = set()
         self.non_consumable_resource = set()
+        self.resource_minimization = OrderedDict()
         self.worst_bounds = OrderedDict()
         self.best_bounds = OrderedDict()
         self.component_requirements = OrderedDict()
@@ -48,6 +49,7 @@ class IntermediateStructure:
     def add_resource(self, r: Resource, resource_name: str = None):
         if resource_name is None:
             resource_name = r.name
+
         if r.consumable:
             self.consumable_resource.add(resource_name)
         else:
@@ -62,6 +64,20 @@ class IntermediateStructure:
         if r.best_bound is not None:
             self.best_bounds[resource_name] = r.best_bound
             self.maybe_update_bounds(r.best_bound)
+
+        self.resource_minimization[resource_name] = r.minimization
+
+    def maybe_update_resource_bounds(self, r: Resource, value: int):
+        if r.minimization:
+            if r.best_bound is None or r.best_bound > value:
+                r.best_bound = value
+            if r.worst_bound is None or r.worst_bound < value:
+                r.worst_bound = value
+        else:
+            if r.best_bound is None or r.best_bound < value:
+                r.best_bound = value
+            if r.worst_bound is None or r.worst_bound > value:
+                r.worst_bound = value
 
     def maybe_update_bounds(self, value: float):
         if self.max_bound is None or value > self.max_bound:
@@ -101,6 +117,7 @@ class IntermediateStructure:
                         raise AssertionError(f"Manual mode for flavour ordering strategy has been chosen but {c.name} in flavour {f.name} has no importance")
 
                     self.importance[(c.name, f.name)] = f.importance
+            return
         elif order_strategy == "incremental":
             for c in components:
                 value = 1
@@ -153,10 +170,13 @@ class IntermediateStructure:
                             self.add_resource(r.resource, e)
                             self.component_requirements[(c.name, f.name, e)] = 1
                             self.maybe_update_bounds(1)
+                            self.maybe_update_resource_bounds(r.resource, 1)
+                            self.maybe_update_resource_bounds(r.resource, 0)
                     else:
                         self.add_resource(r.resource)
                         self.component_requirements[(c.name, f.name, r.resource.name)] = r.value
                         self.maybe_update_bounds(r.value)
+                        self.maybe_update_resource_bounds(r.resource, r.value)
 
                 dependencies = [
                     d
@@ -173,9 +193,11 @@ class IntermediateStructure:
         # Fix flavours uses deleting empty ones and give value to the ones that
         # do not specify a flavour
         self.uses = OrderedDict({
-            k : ((ct, ft) if ft is not None else (ct, self.flavours[ct][0]))
+            k : [
+                ((ct, ft) if ft is not None else (ct, self.flavours[ct][0]))
+                for ct, ft in v
+            ]
             for k, v in self.uses.items()
-            for ct, ft in v
             if len(v) > 0
         })
 
@@ -191,12 +213,15 @@ class IntermediateStructure:
                         self.add_resource(c.resource, e)
                         self.node_capabilities[(node.name, e)] = 1
                         self.maybe_update_bounds(1)
+                        self.maybe_update_resource_bounds(c.resource, 1)
+                        self.maybe_update_resource_bounds(c.resource, 0)
                         self.node_cost[(node.name, e)] = c.cost if c.cost is not None else 0
                         self.node_carb[(node.name, e)] = c.carb if c.carb is not None else 0
                 else:
                     self.add_resource(c.resource)
                     self.node_capabilities[(node.name, c.resource.name)] = c.value
                     self.maybe_update_bounds(c.value)
+                    self.maybe_update_resource_bounds(c.resource, c.value)
                     self.node_cost[(node.name, c.resource.name)] = c.cost if c.cost is not None else 0
                     self.node_carb[(node.name, c.resource.name)] = c.carb if c.carb is not None else 0
 
@@ -237,5 +262,6 @@ class IntermediateStructure:
                 for link in link_cap:
                     for c in link:
                         self.add_resource(c.resource)
+                        self.maybe_update_resource_bounds(c.resource, c.value)
                         self.link_capacity[(node.name, t, c.resource.name)] = c.value
                         self.link_capacity[(t, node.name, c.resource.name)] = c.value

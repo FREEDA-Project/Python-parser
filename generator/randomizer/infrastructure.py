@@ -17,9 +17,11 @@ def generate_infrastructure(resources, nodes_amount, graph):
             if "choices" in resource:
                 capabilities[res_name] = resource["choices"]
             else:
-                max_bound = max(resource["worst_bound"] * 1000, resource["best_bound"] * 1000)
-                min_bound = min(resource["worst_bound"] * 1000, resource["best_bound"] * 1000)
-                capabilities[res_name] = random.randint(max_bound, min_bound)
+                capabilities[res_name] = random.randint(
+                    min(resource["worst_bound"], resource["best_bound"]),
+                    max(resource["worst_bound"], resource["best_bound"])
+                )
+
         infrastructure["nodes"][name] = {
             "capabilities" : capabilities,
             "profile" : {

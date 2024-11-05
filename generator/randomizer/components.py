@@ -98,12 +98,12 @@ def generate_flavours_resources_dependencies(
                 else:
                     value = (
                         random.randint(
-                            r["worst_bound"] / requirements_scaling_factor,
-                            r["best_bound"] / requirements_scaling_factor
+                            int(r["worst_bound"]),
+                            int(r["worst_bound"] + (r["best_bound"] / requirements_scaling_factor))
                         ) if r["optimization"] == "maximization"
                         else random.randint(
-                            r["best_bound"] / requirements_scaling_factor,
-                            r["worst_bound"] / requirements_scaling_factor
+                            int(r["best_bound"]),
+                            int(r["best_bound"] + (r["worst_bound"] / requirements_scaling_factor))
                         )
                     )
                 result[c]["common"] = {

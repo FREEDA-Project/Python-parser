@@ -14,11 +14,15 @@ class MiniZincTranslator(Translator):
             i += n
         return result
 
+    def combine_comp_flav(self, c, f):
+        separator = "-"
+        return str(c) + separator + str(f)
+
     def __init__(self, struct: IntermediateStructure):
         super(MiniZincTranslator, self).__init__(struct)
 
         self.compflavs = [
-            str(c) + "-" + str(f)
+            self.combine_comp_flav(c, f)
             for c, fs in struct.flavours.items()
             for f in fs
         ]
@@ -98,6 +102,18 @@ class MiniZincTranslator(Translator):
         return result
 
     def make_resources_bounds(self, struct):
+        # result = "MAX_RBOUNDS = 1;\n"
+        # result += "MIN_RBOUNDS = 0;\n"
+
+        # result += "worstBounds = [" + ", ".join(
+        #     "MIN_RBOUNDS" if struct.resource_minimization[r] else "MAX_RBOUNDS"
+        #     for r in struct.resources
+        # ) + "];\n"
+        # result += "bestBounds = [" + ", ".join(
+        #     "MAX_RBOUNDS" if struct.resource_minimization[r] else "MIN_RBOUNDS"
+        #     for r in struct.resources
+        # ) + "];\n"
+        
         result = "MAX_RBOUNDS = " + str(struct.max_bound) + ";\n"
         result += "MIN_RBOUNDS = " + str(struct.min_bound) + ";\n"
         worst_list = []
@@ -118,16 +134,21 @@ class MiniZincTranslator(Translator):
 
         result += "worstBounds = [" + ", ".join(worst_list) + "];\n"
         result += "bestBounds = [" + ", ".join(best_list) + "];\n"
+        result += "resourceMinimization = ["+ ", ".join(
+            "true" if struct.resource_minimization[r] else "false"
+            for r in struct.resources
+        ) + "];\n"
         return result
 
     def make_uses(self, struct):
         result = "Uses = array2d(CompFlavs, CompFlavs, ["
         compflavs_uses = dict()
-        for (c1, f1), (c2, f2) in struct.uses.items():
-            compflavs_uses[
-                str(c1) + "-" + str(f1),
-                str(c2) + "-" + str(f2)
-            ] = str(1)
+        for (c1, f1), uses_list in struct.uses.items():
+            for (c2, f2) in uses_list:
+                compflavs_uses[
+                    self.combine_comp_flav(c1, f1),
+                    self.combine_comp_flav(c2, f2)
+                ] = str(1)
 
         def make_if_uses(ciclers: list[str], values: list[str]):
             indexes = [self.compflavs.index(v) + 1 for v in values]
@@ -154,8 +175,9 @@ class MiniZincTranslator(Translator):
     def make_may_use(self, struct):
         result = "mayUse = array2d(Comps, CompFlavs, ["
         mayUse = {
-            (ct, str(cf) + "-" + str(ff)) : 1
-            for (cf, ff), (ct, _) in struct.uses.items()
+            (ct, self.combine_comp_flav(cf, ff)) : 1
+            for (cf, ff), uses_list in struct.uses.items()
+            for ct, _ in uses_list
         }
         def make_if_may_uses(ciclers: list[str], values: list[str]):
             return (
@@ -181,7 +203,7 @@ class MiniZincTranslator(Translator):
     def make_component_requirement(self, struct):
         result = "comReq = array2d(CompFlavs, Res, [\n"
         compflavs_comreq = {
-            (str(c) + "-" + str(f), r) : v
+            (self.combine_comp_flav(c, f), r) : v
             for (c, f, r), v in struct.component_requirements.items()
         }
         def make_if_comreq(ciclers, values):
@@ -207,8 +229,9 @@ class MiniZincTranslator(Translator):
                 "first_if": True,
                 "if_generator": make_if_comreq,
                 "no_value_if": lambda _1, _2 : "else worstBounds[r1]",
-                "no_value_matrix": lambda r :
-                    struct.worst_bounds[r[1]] if r[1] in struct.worst_bounds else struct.best_bounds[r[1]]
+                "no_value_matrix": lambda r : struct.worst_bounds[r[1]]
+                    # if struct.resource_minimization[r[1]]
+                    # else struct.best_bounds[r[1]]
             }
         )
         result += comreq_body
@@ -235,8 +258,8 @@ class MiniZincTranslator(Translator):
             {
                 "first_if": True,
                 "if_generator": make_if_node_cap,
-                "no_value_if": lambda _1, _2 : "else 0",
-                "no_value_matrix": lambda _ : "0"
+                #"no_value_if": lambda _1, _2 : ,
+                "no_value_matrix": lambda r : "0" #struct.worst_bounds[r[1]]
             }
         )
         result += node_cap
@@ -256,7 +279,7 @@ class MiniZincTranslator(Translator):
             {
                 "first_if": True,
                 "if_generator": lambda c, v : self.make_if_generic(struct, c, v),
-                "no_value_if": lambda _1, _2 : "else worstBounds[r1]",
+                #"no_value_if": lambda _1, _2 : "else worstBounds[r1]",
                 "no_value_matrix": lambda indexes : struct.worst_bounds[indexes[-1]]
             }
         )
