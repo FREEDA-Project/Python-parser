@@ -6,6 +6,7 @@ from loader import load_application, load_infrastructure, load_resources
 from src.data.resources import default_resources
 from src.language.intermediate_language import IntermediateStructure
 from src.translators.minizinc import MiniZincTranslator
+from src.translators.zephyrus import ZephyrusTranslator
 
 def main(
     components_data,
@@ -29,6 +30,8 @@ def main(
 
     if format == "minizinc":
         translated = MiniZincTranslator(intermediate_structure)
+    elif format == "zephyrus":
+        translated = ZephyrusTranslator(intermediate_structure)
     else:
         raise Exception("Invalid output format")
 
@@ -41,7 +44,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--format",
         "-f",
-        choices=["minizinc", "smt", "ampl"],
+        choices=["minizinc", "smt", "ampl", "zephyrus"],
         default="minizinc",
         help="Output format",
     )
@@ -67,23 +70,17 @@ if __name__ == "__main__":
     with open(args.components, "r") as yaml_file:
         components_data = yaml.safe_load(yaml_file)
 
+    additional_resources_data = None
     if args.additional_resources is not None:
         with open(args.additional_resources, "r") as yaml_file:
             additional_resources_data = yaml.safe_load(yaml_file)
 
-        result = main(
-            components_data,
-            infrastructure_data,
-            args.format,
-            args.flavour_priority,
-            additional_resources_data
-        )
-    else:
-        result = main(
-            components_data,
-            infrastructure_data,
-            args.format,
-            args.flavour_priority
-        )
+    result = main(
+        components_data,
+        infrastructure_data,
+        args.format,
+        args.flavour_priority,
+        additional_resources_data
+    )
 
     print(result)

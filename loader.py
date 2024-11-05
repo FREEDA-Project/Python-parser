@@ -211,8 +211,6 @@ def load_application(data: dict[str, Any], resouces: list[Resource]) -> Applicat
 def load_resources(data: dict[str, Any]) -> list[Resource]:
     resources = []
     for r_name, r_data in data.items():
-        minimization = True if r_data["optimization"] == "minimization" else False
-        consumable = True if "type" in r_data and r_data["type"] == "consumable" else False
         worst_bound = r_data.get("worst_bound")
         best_bound = r_data.get("best_bound")
         if worst_bound is None and best_bound is None:
@@ -221,14 +219,14 @@ def load_resources(data: dict[str, Any]) -> list[Resource]:
         if "choices" in r_data:
             resources.append(ListResource(
                 r_name,
-                minimization,
+                True,
                 r_data["choices"]
             ))
         else:
             resources.append(Resource(
                 r_name,
-                consumable,
-                minimization,
+                True if "type" in r_data and r_data["type"] == "consumable" else False,
+                True if r_data["optimization"] == "minimization" else False,
                 best_bound,
                 worst_bound
             ))
