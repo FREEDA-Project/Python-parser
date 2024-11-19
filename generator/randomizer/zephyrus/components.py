@@ -42,16 +42,9 @@ def create_dag(graph, components_name, flavours_names):
 
     return uses
 
-def generate_topology(starter_graph, components_amount, flavours_amount, amount):
+def generate_topology(starter_graph, components_amount):
     components_name = ["component_" + str(c) for c in range(components_amount)]
-    flavours_amount = [
-        random.choice([1, random.randint(2, flavours_amount)])
-        for _ in components_name
-    ]
-    flavours_names = [
-        ["flavour_" + str(i) for i in range(f)]
-        for f in flavours_amount
-    ]
+    flavours_names = [[f] for f in ["flavour_0"] * len(components_name)]
 
     uses_names = create_dag(starter_graph, components_name, flavours_names)
 
@@ -63,7 +56,7 @@ def generate_topology(starter_graph, components_amount, flavours_amount, amount)
 
         component_dict = {
             "type" : "service",
-            "must" : True,
+            "must" : bool(random.getrandbits(1)),
             "flavours" : flavours,
             "importance_order" : [flavours_names[i_c]]
         }
@@ -154,8 +147,6 @@ def generate_flavours_resources_dependencies(
 def generate_app_as_in_zephyrus(
     resources,
     components_amount,
-    flavours_amount,
-    amount,
     starting_components_topology,
     requirements_scaling_factor
 ):
@@ -174,9 +165,7 @@ def generate_app_as_in_zephyrus(
 
     components_name, flavours_names, components_dict = generate_topology(
         starting_components_topology,
-        components_amount,
-        flavours_amount,
-        amount
+        components_amount
     )
     application["components"] = components_dict
 

@@ -16,7 +16,6 @@ def single_randomizer_generator(raw_args=None):
     parser.add_argument("amount", type=int, help="The number of files to generate")
     parser.add_argument("-o", "--output", type=str, help="Location to output file", default=None)
     parser.add_argument("-c", "--components", type=int, help="Number of components to generate", default=3)
-    parser.add_argument("-f", "--flavours", type=int, help="Max number of flavours to generate for each components", default=3)
     parser.add_argument("-n", "--nodes", type=int, help="Number of nodes to generate", default=3)
     parser.add_argument("-r", "--resources", type=int, help="Number of resources to generate", default=8)
     parser.add_argument(
@@ -51,10 +50,9 @@ def single_randomizer_generator(raw_args=None):
         ],
         default="complete"
     )
-    args = parser.parse_args()
+    args = parser.parse_args(raw_args)
 
-    instance_name = f"c{args.components}" +\
-        f"_f{args.flavours}" +\
+    instance_name = f"c{args.components}_f1" +\
         f"_n{args.nodes}_r1" +\
         f"_g{args.components_graph.split('_')[0]}" +\
         f"_i{args.infrastructure_graph.split('_')[0]}"
@@ -63,7 +61,6 @@ def single_randomizer_generator(raw_args=None):
         results = randomizer.randomize(
             args.amount,
             args.components,
-            args.flavours,
             args.nodes,
             args.components_graph,
             args.infrastructure_graph

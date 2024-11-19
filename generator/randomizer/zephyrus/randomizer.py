@@ -65,7 +65,6 @@ def convert_string_to_topology(
 def randomize(
     amount,
     components,
-    flavours,
     nodes,
     starting_components_topology_str,
     infrastructure_topology_str
@@ -83,8 +82,6 @@ def randomize(
         app = generate_app_as_in_zephyrus(
             resources,
             components,
-            flavours,
-            amount,
             starting_components_topology,
             REQUIREMENTS_SCALING_FACTOR
         )
@@ -107,7 +104,6 @@ if __name__ == "__main__":
     parser.add_argument("amount", type=int, help="The number of files to generate")
     parser.add_argument("-o", "--output", type=str, help="Location to output files", default=None)
     parser.add_argument("-c", "--components", type=int, help="Number of components to generate", default=3)
-    parser.add_argument("-f", "--flavours", type=int, help="Max number of flavours to generate for each components", default=3)
     parser.add_argument("-n", "--nodes", type=int, help="Number of nodes to generate", default=3)
     parser.add_argument(
         "-g",
@@ -149,7 +145,6 @@ if __name__ == "__main__":
     results = randomize(
         args.amount,
         args.components,
-        args.flavours,
         args.nodes,
         args.components_graph,
         args.infrastructure_graph

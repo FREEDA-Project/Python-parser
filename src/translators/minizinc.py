@@ -72,21 +72,6 @@ class MiniZincTranslator(Translator):
         self.output.append("costBudget = " + str(struct.cost_budget) + ";")
         self.output.append("carbBudget = " + str(struct.carbon_budget) + ";")
 
-    def worst_best_bounds(self, struct, r, reversed=False):
-        if not reversed:
-            return "MIN_RBOUNDS" if struct.resource_minimization[r] else "MAX_RBOUNDS"
-        else:
-            return "MAX_RBOUNDS" if struct.resource_minimization[r] else "MIN_RBOUNDS"
-
-    def make_if_generic(self, struct, ciclers, values):
-        result = []
-        for c, v in zip(ciclers, values):
-            l = "C" if str(v) in struct.consumable_resource else "N"
-            value = v if not c.startswith("r") else l + "(" + str(v) + ")"
-            result.append(c + " = " + value)
-
-        return " /\\ ".join(result)
-
     def make_importance(self, struct, flavours):
         result = "imp = array2d(Comps, Flavs, [\n"
         result += self.construct_explicit(
@@ -104,10 +89,13 @@ class MiniZincTranslator(Translator):
         result += "MIN_RBOUNDS = " + str(min(struct.best_bounds.values())) + ";\n"
 
         result += "worstBounds = [\n" + "".join(
-            "\t" + self.worst_best_bounds(struct, r) + ", % " + r + "\n"
+            "\t" + ("MIN_RBOUNDS" if struct.resource_minimization[r] else "MAX_RBOUNDS") + ", % " + r + "\n"
             for r in struct.resources
         ) + "];\n"
-        result += "bestBounds = [MAX_RBOUNDS - i | i in worstBounds];\n"
+        result += "bestBounds = [\n" + "".join(
+            "\t" + ("MAX_RBOUNDS" if struct.resource_minimization[r] else "MIN_RBOUNDS") + ", % " + r + "\n"
+            for r in struct.resources
+        ) + "];\n"
 
         return result
 
@@ -157,17 +145,13 @@ class MiniZincTranslator(Translator):
             for (c, f, r), v in struct.component_requirements.items()
         }
 
-        def make_bounds(indexes):
-            resource = indexes[-1]
-            return self.worst_best_bounds(struct, resource)
-
         comreq_body = self.construct_explicit(
             compflavs_comreq,
             [
                 (self.compflavs, "CompFlavs"),
                 (struct.resources, "Res")
             ],
-            make_bounds
+            lambda i : "MIN_RBOUNDS" if struct.resource_minimization[i[-1]] else "MAX_RBOUNDS"
         )
         result += comreq_body
         return result
@@ -199,7 +183,7 @@ class MiniZincTranslator(Translator):
                 (struct.components, "Comps"),
                 (struct.resources, "Res")
             ],
-            lambda i : self.worst_best_bounds(struct, i[-1])
+            lambda i : "MIN_RBOUNDS" if struct.resource_minimization[i[-1]] else "MAX_RBOUNDS"
         )
         return result
 
@@ -215,9 +199,9 @@ class MiniZincTranslator(Translator):
         def make_bounds(indexes):
             resource = indexes[-1]
             if indexes[0] == "0" or indexes[1] == "0":
-                return self.worst_best_bounds(struct, resource, reversed=True)
+                return "MAX_RBOUNDS" if struct.resource_minimization[resource] else "MIN_RBOUNDS"
             else:
-                return struct.worst_bounds[resource]
+                return "MIN_RBOUNDS" if struct.resource_minimization[resource] else "MAX_RBOUNDS"
 
         result = "linkCap = array3d(Nodes0, Nodes0, Res, [\n"
         result += self.construct_explicit(
