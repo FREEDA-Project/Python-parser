@@ -8,7 +8,7 @@ def generate_infrastructure_as_in_zephyrus(resources, nodes_amount, graph):
         "nodes" : {},
         "links" : list()
     }
-    nodes_name = [node_name_prefix + str(i) for i in range(nodes_amount)]
+    nodes_name = [node_name_prefix + str(i) for i in range(1, nodes_amount + 1)]
 
     for name in nodes_name:
         capabilities = {}
@@ -24,7 +24,10 @@ def generate_infrastructure_as_in_zephyrus(resources, nodes_amount, graph):
             }
         }
 
-    from_tos = [("node_" + str(ef), "node_" + str(et)) for ef, et in graph.edges()]
+    from_tos = [
+        (node_name_prefix + str(ef + 1), node_name_prefix + str(et + 1))
+        for ef, et in graph.edges()
+    ]
     for from_node, to_node in from_tos:
         infrastructure["links"].append({
             "connected_nodes" : [from_node, to_node],

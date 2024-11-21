@@ -23,8 +23,8 @@ def create_dag(graph, components_name, flavours_names):
 
     # Create uses - fill with starter graph
     for u, v in dag.edges:
-        u_component = "component_" + str(u)
-        v_component = "component_" + str(v)
+        u_component = "component_" + str(u + 1)
+        v_component = "component_" + str(v + 1)
 
         u_index = components_name.index(u_component)
         u_flavours = flavours_names[u_index]
@@ -43,8 +43,8 @@ def create_dag(graph, components_name, flavours_names):
     return uses
 
 def generate_topology(starter_graph, components_amount):
-    components_name = ["component_" + str(c) for c in range(components_amount)]
-    flavours_names = [[f] for f in ["flavour_0"] * len(components_name)]
+    components_name = ["component_" + str(c) for c in range(1, components_amount + 1)]
+    flavours_names = [[f] for f in ["flavour_1"] * len(components_name)]
 
     uses_names = create_dag(starter_graph, components_name, flavours_names)
 
