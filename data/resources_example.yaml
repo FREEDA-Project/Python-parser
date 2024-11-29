@@ -9,7 +9,7 @@ security:
   worst_bound: 0
 latency:
   type: non-consumable
-  optimization: minimization
+  optimization: maximization
   best_bound: 0
 availability:
   type: non-consumable
