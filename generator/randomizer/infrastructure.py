@@ -10,10 +10,9 @@ def generate_infrastructure(resources, nodes_amount, graph):
     }
     nodes_name = [node_name_prefix + str(i) for i in range(nodes_amount)]
 
-    cons_res = [(n, r) for n, r in resources.items() if "type" not in r or r["type"] == "consumable"]
     for name in nodes_name:
         capabilities = {}
-        for res_name, resource in cons_res:
+        for res_name, resource in resources.items():
             if "choices" in resource:
                 capabilities[res_name] = resource["choices"]
             else:

@@ -13,7 +13,6 @@ from infrastructure import generate_infrastructure
 from resources import generate_resources
 
 MAX_RESOURCE_VALUE = 1_000
-REQUIREMENTS_SCALING_FACTOR = 100
 
 def convert_string_to_topology(
     components,
@@ -75,7 +74,7 @@ def randomize(
             components,
             flavours,
             starting_components_topology,
-            REQUIREMENTS_SCALING_FACTOR
+            components + 1
         )
         infrastructure = generate_infrastructure(
             resources,
