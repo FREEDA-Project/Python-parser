@@ -28,6 +28,20 @@ def get_resource(resources: list[Resource], r_name: Resource):
     else:
         raise AssertionError(f"Unable to find resource \"{r_name}\". Terminating")
 
+def add_to_array(array, resource, data):
+    if isinstance(data, dict):
+        array.add_requirement(Requirement(
+            resource,
+            data["value"],
+            data.get("soft", False)
+        ))
+    else:
+        array.add_requirement(Requirement(
+            resource,
+            data,
+            False
+        ))
+
 def create_components(data, resources: list[Resource]) -> set[Component]:
     # Create components
     components = set()
@@ -79,11 +93,7 @@ def create_components(data, resources: list[Resource]) -> set[Component]:
         for req_name, req_data in req_comp_data["common"].items():
             component = [c for c in components if c.name == c_name][0]
             resource = get_resource(resources, req_name)
-            component.add_requirement(Requirement(
-                resource,
-                req_data["value"],
-                req_data.get("soft", False)
-            ))
+            add_to_array(component, resource, req_data)
 
         if "flavour-specific" in req_comp_data:
             for req_flav_name, req_flavs_data in req_comp_data["flavour-specific"].items():
@@ -95,11 +105,7 @@ def create_components(data, resources: list[Resource]) -> set[Component]:
                         for f in c.flavours
                         if c.name == c_name and f.name == req_flav_name
                     ][0]
-                    flavour_of_component.add_requirement(Requirement(
-                        resource,
-                        req_data["value"],
-                        req_data.get("soft", False)
-                    ))
+                    add_to_array(flavour_of_component, resource, req_data)
 
     return components
 
@@ -119,11 +125,18 @@ def create_dependencies(
                 requirements = set()
                 for req_name, req_data in flav_requirements.items():
                     resource = get_resource(resources, req_name)
-                    requirements.add(Requirement(
-                        resource,
-                        req_data["value"],
-                        req_data.get("soft", False)
-                    ))
+                    if isinstance(req_data, dict):
+                        requirements.add(Requirement(
+                            resource,
+                            req_data["value"],
+                            req_data.get("soft", False)
+                        ))
+                    else:
+                        requirements.add(Requirement(
+                            resource,
+                            req_data,
+                            False
+                        ))
 
                 dependencies.add(Dependency(
                     from_component,
