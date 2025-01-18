@@ -70,6 +70,11 @@ def generate_topology(starter_graph, components_amount, flavours_amount):
 
         components_dict[c_name] = component_dict
 
+    # If none of the component has must, put it
+    if all(not c["must"] for c in components_dict.values()):
+        to_must = random.choice(components_dict.values())
+        to_must["must"] = True
+
     return components_name, flavours_names, uses_names, components_dict
 
 def generate_flavours_resources_dependencies(
