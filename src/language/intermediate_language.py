@@ -45,6 +45,18 @@ class IntermediateStructure:
         self.consumable_resource = sorted(list(self.consumable_resource))
         self.non_consumable_resource = sorted(list(self.non_consumable_resource))
         self.resources = self.consumable_resource + self.non_consumable_resource
+        self.components = sorted(self.components)
+        self.must_components = sorted(self.must_components)
+        self.nodes = sorted(self.nodes)
+
+        self.flavours = OrderedDict(sorted(self.flavours.items()))
+        self.importance = OrderedDict(sorted(self.importance.items()))
+        self.uses = OrderedDict(sorted(self.uses.items()))
+        self.resource_minimization = OrderedDict(sorted(self.resource_minimization.items()))
+        self.worst_bounds = OrderedDict(sorted(self.worst_bounds.items()))
+        self.best_bounds = OrderedDict(sorted(self.best_bounds.items()))
+        self.component_requirements = OrderedDict(sorted(self.component_requirements.items()))
+        self.dependencies = OrderedDict(sorted(self.dependencies.items()))
 
     def add_resource(self, r: Resource, resource_name: str = None):
         if resource_name is None:

@@ -39,7 +39,7 @@ class MiniZincTranslator(Translator):
         self.output.append("Comps = {" + ", ".join(struct.components) + "};")
         self.output.append("mustComps = {" + ", ".join(struct.must_components) + "};")
 
-        flavours = list(set(e for f in struct.flavours.values() for e in f))
+        flavours = list(sorted(set(e for f in struct.flavours.values() for e in f)))
         self.output.append("Flavs = {" + ", ".join(f for f in flavours) + "};")
         self.output.append("Flav = [" + ", ".join(
             "{" + ", ".join(fs) + "}"
