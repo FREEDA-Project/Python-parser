@@ -1,0 +1,81 @@
+name: video_analytics
+components:
+  frontend:
+    must: true
+    flavours:
+      cloud:
+        uses:
+          - component: backend
+            min_flavour: cloud
+      edge:
+        uses:
+          - component: backend
+            min_flavour: edge
+    importance_order: [edge, cloud]
+  backend:
+      flavours:
+        cloud:
+          uses:
+            - component: database
+              min_flavour: standard
+        edge:
+          uses: []
+      importance_order: [edge, cloud]
+  database:
+    flavours:
+      standard:
+        uses: []
+    importance_order: [standard]
+requirements:
+  components:
+    frontend:
+      common:
+        bwIn: 10
+        bwOut: 10
+        availability: 90
+        storage: 8
+      flavour-specific:
+        edge:
+          cpu: 1
+          ram: 2
+          security: [ssl, firewall]
+        cloud:
+          cpu: 2
+          ram: 4
+          security: [ssl, firewall, encrypted_storage]
+    backend:
+      common:
+        bwIn: 10
+        bwOut: 10
+        availability: 90
+        storage: 8
+      flavour-specific:
+        edge:
+          cpu: 1
+          ram: 2
+          security:  [ssl, encrypted_storage]
+        cloud:
+          cpu: 2
+          ram: 4
+          security: [ssl, firewall, encrypted_storage]
+    database:
+      common:
+        bwIn: 20
+        bwOut: 10
+        availability: 99
+        cpu: 1
+        ram: 8
+        storage: 256
+        security: [ssl, encrypted_storage]
+  dependencies:
+    frontend:
+      edge:
+        backend: {latency: 10, availability: 90}
+      cloud:
+        backend: {latency: 20, availability: 98}
+    backend:
+      cloud:
+        database: {latency: 20, availability: 99}
+  budget:
+    cost: 600
+    carbon: 500000

@@ -46,7 +46,7 @@ def create_components(data, resources: list[Resource]) -> set[Component]:
     # Create components
     components = set()
     for component_name, component_data in data["components"].items():
-        type = component_data["type"]
+        type = component_data.get("type", "service")
         must = component_data.get("must", False)
         flavours = []
 
