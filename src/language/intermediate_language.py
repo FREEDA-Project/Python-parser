@@ -6,6 +6,9 @@ from src.data.resources import Resource
 from src.data.applications import Application
 from src.data.infrastructures import Infrastructure
 
+def find_resource(resources) -> str:
+    return "cpu" if "cpu" in resources else list(resources)[0]
+
 class IntermediateStructure:
     def __init__(
         self,
@@ -133,8 +136,8 @@ class IntermediateStructure:
         elif order_strategy == "incremental":
             for c in components:
                 value = 1
-                for f in c.flavours:
-                    self.importance[(c.name, f.name)] = value
+                for f in c.importance_order:
+                    self.importance[(c.name, f)] = value
                     value += 1
             return
 
@@ -239,8 +242,8 @@ class IntermediateStructure:
 
             # If a node cost (or carbon) has all zero values, it means that
             # there was a single carbon value inside the node itself. Search a
-            # consumable resource to assign the value to
-            a_resource = list(self.non_consumable_resource.union(self.consumable_resource))[0]
+            # consumable resource (cpu or the first one) to assign the value to
+            a_resource = find_resource(self.consumable_resource)
             node_cost = [
                 (c, v)
                 for (n, c), v in self.node_cost.items()

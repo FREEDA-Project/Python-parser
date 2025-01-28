@@ -4,25 +4,25 @@
 Comps = {backend, database, frontend};
 mustComps = {frontend};
 Flavs = {cloud, edge, standard};
-Flav = [{cloud, edge}, {standard}, {cloud, edge}];
+Flav = [{edge, cloud}, {standard}, {edge, cloud}];
 imp = array2d(Comps, Flavs, [
 	%cloud, edge, standard
-	1, 2, 0, % backend
+	2, 1, 0, % backend
 	0, 0, 1, % database
-	1, 2, 0, % frontend
+	2, 1, 0, % frontend
 ]);
 Uses = array2d(CompFlavs, CompFlavs, [
-	%backend-cloud, backend-edge, database-standard, frontend-cloud, frontend-edge
-	0, 0, 1, 0, 0, % backend-cloud
+	%backend-edge, backend-cloud, database-standard, frontend-edge, frontend-cloud
 	0, 0, 0, 0, 0, % backend-edge
+	0, 0, 1, 0, 0, % backend-cloud
 	0, 0, 0, 0, 0, % database-standard
-	1, 0, 0, 0, 0, % frontend-cloud
-	0, 1, 0, 0, 0, % frontend-edge
+	1, 0, 0, 0, 0, % frontend-edge
+	0, 1, 0, 0, 0, % frontend-cloud
 ]);
 mayUse = array2d(Comps, CompFlavs, [
-	%backend-cloud, backend-edge, database-standard, frontend-cloud, frontend-edge
+	%backend-edge, backend-cloud, database-standard, frontend-edge, frontend-cloud
 	0, 0, 0, 1, 1, % backend
-	1, 0, 0, 0, 0, % database
+	0, 1, 0, 0, 0, % database
 	0, 0, 0, 0, 0, % frontend
 ]);
 CRes = {bwIn, bwOut, cpu, ram, storage};
@@ -56,11 +56,11 @@ bestBounds = [
 
 comReq = array2d(CompFlavs, Res, [
 	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
-	10, 10, 2, 4, 8, 90, 1, 1, MAX_RBOUNDS, 1, % backend-cloud
 	10, 10, 1, 2, 8, 90, 1, MIN_RBOUNDS, MAX_RBOUNDS, 1, % backend-edge
+	10, 10, 2, 4, 8, 90, 1, 1, MAX_RBOUNDS, 1, % backend-cloud
 	20, 10, 1, 8, 256, 99, 1, MIN_RBOUNDS, MAX_RBOUNDS, 1, % database-standard
-	10, 10, 2, 4, 8, 90, 1, 1, MAX_RBOUNDS, 1, % frontend-cloud
 	10, 10, 1, 2, 8, 90, MIN_RBOUNDS, 1, MAX_RBOUNDS, 1, % frontend-edge
+	10, 10, 2, 4, 8, 90, 1, 1, MAX_RBOUNDS, 1, % frontend-cloud
 ]);
 Nodes = {n1, n2, n3};
 
@@ -75,7 +75,7 @@ depReq = array4d(Comps, Flavs, Comps, Res, [
 
 	% backend
 
-	% standard
+	% edge
 	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
@@ -87,7 +87,7 @@ depReq = array4d(Comps, Flavs, Comps, Res, [
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, 99, MIN_RBOUNDS, MIN_RBOUNDS, 20, MIN_RBOUNDS, % database
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
 
-	% edge
+	% standard
 	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
@@ -96,7 +96,7 @@ depReq = array4d(Comps, Flavs, Comps, Res, [
 
 	% database
 
-	% standard
+	% edge
 	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
@@ -108,7 +108,7 @@ depReq = array4d(Comps, Flavs, Comps, Res, [
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
 
-	% edge
+	% standard
 	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
@@ -117,9 +117,9 @@ depReq = array4d(Comps, Flavs, Comps, Res, [
 
 	% frontend
 
-	% standard
+	% edge
 	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
-	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, 90, MIN_RBOUNDS, MIN_RBOUNDS, 10, MIN_RBOUNDS, % backend
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
 
@@ -129,9 +129,9 @@ depReq = array4d(Comps, Flavs, Comps, Res, [
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
 
-	% edge
+	% standard
 	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
-	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, 90, MIN_RBOUNDS, MIN_RBOUNDS, 10, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
 	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
 
