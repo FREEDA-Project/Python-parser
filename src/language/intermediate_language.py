@@ -52,9 +52,14 @@ class IntermediateStructure:
         self.must_components = sorted(self.must_components)
         self.nodes = sorted(self.nodes)
 
+        self.flavours = {k : sorted(v) for k, v in self.flavours.items()}
         self.flavours = OrderedDict(sorted(self.flavours.items()))
+
         self.importance = OrderedDict(sorted(self.importance.items()))
+
+        self.uses = {k : sorted(v) for k, v in self.uses.items()}
         self.uses = OrderedDict(sorted(self.uses.items()))
+
         self.resource_minimization = OrderedDict(sorted(self.resource_minimization.items()))
         self.worst_bounds = OrderedDict(sorted(self.worst_bounds.items()))
         self.best_bounds = OrderedDict(sorted(self.best_bounds.items()))

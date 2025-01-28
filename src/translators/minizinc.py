@@ -39,14 +39,14 @@ class MiniZincTranslator(Translator):
         self.output.append("Comps = {" + ", ".join(struct.components) + "};")
         self.output.append("mustComps = {" + ", ".join(struct.must_components) + "};")
 
-        flavours = list(sorted(set(e for f in struct.flavours.values() for e in f)))
-        self.output.append("Flavs = {" + ", ".join(f for f in flavours) + "};")
+        self.flavs = sorted(set(e for f in struct.flavours.values() for e in f))
+        self.output.append("Flavs = {" + ", ".join(self.flavs) + "};")
         self.output.append("Flav = [" + ", ".join(
             "{" + ", ".join(fs) + "}"
             for fs in struct.flavours.values()
         ) + "];")
 
-        self.output.append(self.make_importance(struct, flavours))
+        self.output.append(self.make_importance(struct))
 
         self.output.append(self.make_uses(struct))
         self.output.append(self.make_may_use(struct))
@@ -72,13 +72,13 @@ class MiniZincTranslator(Translator):
         self.output.append("costBudget = " + str(struct.cost_budget) + ";")
         self.output.append("carbBudget = " + str(struct.carbon_budget) + ";")
 
-    def make_importance(self, struct, flavours):
+    def make_importance(self, struct):
         result = "imp = array2d(Comps, Flavs, [\n"
         result += self.construct_explicit(
             struct.importance,
             [
                 (struct.components, "Comps"),
-                (flavours, "Flavs")
+                (self.flavs, "Flavs")
             ],
             lambda _ : "0"
         )
@@ -172,14 +172,12 @@ class MiniZincTranslator(Translator):
         return result
 
     def make_dependency_requirement(self, struct):
-        flavs = list({f for flavs in struct.flavours.values() for f in flavs})
         result = "depReq = array4d(Comps, Flavs, Comps, Res, [\n"
-
         result += self.construct_explicit(
             struct.dependencies,
             [
                 (struct.components, "Comps"),
-                (flavs, "Flavs"),
+                (self.flavs, "Flavs"),
                 (struct.components, "Comps"),
                 (struct.resources, "Res")
             ],
