@@ -9,6 +9,35 @@ from src.data.infrastructures import Infrastructure
 def find_resource(resources) -> str:
     return "cpu" if "cpu" in resources else list(resources)[0]
 
+def topological_sort(graph, order):
+    # Compute in-degrees
+    nodes = sorted(
+        set(graph.keys()) | {n for neighbors in graph.values() for n in neighbors},
+        key=lambda x : order[x]
+    )
+    in_degree = {node: 0 for node in nodes}
+    for node in graph:
+        for neighbor in graph[node]:
+            in_degree[neighbor] += 1
+
+    zero_in_degree = [n for n in nodes if in_degree[n] == 0]
+    topo_order = []
+    while zero_in_degree:
+        current = zero_in_degree.pop(0)
+        topo_order.append(current)
+
+        # Reduce entry-node degree
+        for neighbor in graph.get(current, []):
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                zero_in_degree.append(neighbor)
+
+    # Verify all nodes have been processed
+    if len(topo_order) != len(nodes):
+        raise AssertionError("Dependency graph is not a DAG")
+
+    return topo_order
+
 class IntermediateStructure:
     def __init__(
         self,
@@ -29,6 +58,7 @@ class IntermediateStructure:
         self.uses = OrderedDict()
         self.consumable_resource = set()
         self.non_consumable_resource = set()
+        self.list_resource = OrderedDict()
         self.resource_minimization = OrderedDict()
         self.worst_bounds = OrderedDict()
         self.best_bounds = OrderedDict()
@@ -44,39 +74,50 @@ class IntermediateStructure:
         self.link_capacity = OrderedDict()
         self.initialize_with_infrastruture(infrastructure)
 
-        # After filling it, make it a list to give it an order
-        self.consumable_resource = sorted(list(self.consumable_resource))
-        self.non_consumable_resource = sorted(list(self.non_consumable_resource))
-        self.resources = self.consumable_resource + self.non_consumable_resource
-        self.components = sorted(self.components)
-        self.must_components = sorted(self.must_components)
+        # After filling it, give it a topological order
+        comp_flavs = topological_sort(self.uses, self.importance)
+
+        self.components = []
+        for c, _ in comp_flavs:
+            if c not in self.components:
+                self.components.append(c)
+
+        self.must_components = sorted(
+            self.must_components,
+            key=lambda x: self.components.index(x)
+        )
+
+        self.flavs = []
+        for _, f in comp_flavs:
+            if f not in self.flavs:
+                self.flavs.append(f)
+
+        self.flavours = OrderedDict(sorted(
+            self.flavours.items(),
+            key=lambda x: self.components.index(x[0])
+        ))
+
+        self.consumable_resource = sorted(self.consumable_resource)
+        self.non_consumable_resource = sorted(self.non_consumable_resource)
+        self.resources = []
+        self.resources += sorted(self.consumable_resource)
+        self.resources += sorted(self.non_consumable_resource)
+
         self.nodes = sorted(self.nodes)
 
-        self.flavours = {k : sorted(v) for k, v in self.flavours.items()}
-        self.flavours = OrderedDict(sorted(self.flavours.items()))
-
-        self.importance = OrderedDict(sorted(self.importance.items()))
-
-        self.uses = {k : sorted(v) for k, v in self.uses.items()}
-        self.uses = OrderedDict(sorted(self.uses.items()))
-
-        self.resource_minimization = OrderedDict(sorted(self.resource_minimization.items()))
-        self.worst_bounds = OrderedDict(sorted(self.worst_bounds.items()))
-        self.best_bounds = OrderedDict(sorted(self.best_bounds.items()))
-        self.component_requirements = OrderedDict(sorted(self.component_requirements.items()))
-        self.dependencies = OrderedDict(sorted(self.dependencies.items()))
-
     def add_resource(self, r: Resource, resource_name: str = None):
+        if r.worst_bound is None and r.best_bound is None:
+            raise AssertionError(f"At least one of worst_bound or best_bound for resource {resource_name} must have a value")
+
         if resource_name is None:
             resource_name = r.name
+        else:
+            resource_name = r.name + "_" + resource_name
 
         if r.consumable:
             self.consumable_resource.add(resource_name)
         else:
             self.non_consumable_resource.add(resource_name)
-
-        if r.worst_bound is None and r.best_bound is None:
-            raise AssertionError(f"At least one of worst_bound or best_bound for resource {resource_name} must have a value")
 
         if r.worst_bound is not None:
             self.worst_bounds[resource_name] = r.worst_bound

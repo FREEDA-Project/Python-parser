@@ -39,8 +39,7 @@ class MiniZincTranslator(Translator):
         self.output.append("Comps = {" + ", ".join(struct.components) + "};")
         self.output.append("mustComps = {" + ", ".join(struct.must_components) + "};")
 
-        self.flavs = sorted(set(e for f in struct.flavours.values() for e in f))
-        self.output.append("Flavs = {" + ", ".join(self.flavs) + "};")
+        self.output.append("Flavs = {" + ", ".join(struct.flavs) + "};")
         self.output.append("Flav = [" + ", ".join(
             "{" + ", ".join(fs) + "}"
             for fs in struct.flavours.values()
@@ -78,7 +77,7 @@ class MiniZincTranslator(Translator):
             struct.importance,
             [
                 (struct.components, "Comps"),
-                (self.flavs, "Flavs")
+                (struct.flavs, "Flavs")
             ],
             lambda _ : "0"
         )
@@ -177,7 +176,7 @@ class MiniZincTranslator(Translator):
             struct.dependencies,
             [
                 (struct.components, "Comps"),
-                (self.flavs, "Flavs"),
+                (struct.flavs, "Flavs"),
                 (struct.components, "Comps"),
                 (struct.resources, "Res")
             ],
