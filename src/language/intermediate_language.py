@@ -9,12 +9,7 @@ from src.data.infrastructures import Infrastructure
 def find_resource(resources) -> str:
     return "cpu" if "cpu" in resources else list(resources)[0]
 
-def topological_sort(graph, order):
-    # Compute in-degrees
-    nodes = sorted(
-        set(graph.keys()) | {n for neighbors in graph.values() for n in neighbors},
-        key=lambda x : order[x]
-    )
+def topological_sort(nodes, graph):
     in_degree = {node: 0 for node in nodes}
     for node in graph:
         for neighbor in graph[node]:
@@ -75,7 +70,11 @@ class IntermediateStructure:
         self.initialize_with_infrastruture(infrastructure)
 
         # After filling it, give it a topological order
-        comp_flavs = topological_sort(self.uses, self.importance)
+        comp_flavs = sorted(
+            [(k, v) for k, l in sorted(self.flavours.items()) for v in l],
+            key=lambda x : self.importance[x] if x in self.importance else 0
+        )
+        comp_flavs = topological_sort(comp_flavs, self.uses)
 
         self.components = []
         for c, _ in comp_flavs:
