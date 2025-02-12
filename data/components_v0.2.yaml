@@ -1,0 +1,141 @@
+name: web_application
+components:
+  frontend:
+    type: service
+    must: true
+    flavours:
+      large:
+        uses:
+          - backend
+      medium:
+        uses:
+          - component: backend
+            min_flavour: tiny
+    importance_order: [medium, large]
+  backend:
+    type: service
+    flavours:
+      large:
+        uses:
+          - component: database
+            min_flavour: large
+      medium:
+        uses:
+          - component: database
+            min_flavour: large
+      tiny:
+        uses: []
+    importance_order: [tiny, [medium, large]]
+  database:
+    type: database
+    flavours:
+      large:
+        uses:  []
+requirements:
+  components:
+    frontend:
+      common:
+        bwIn:
+          value: 1000
+        bwOut:
+          value: 1000
+        availability:
+          value: 98
+          soft: true
+        security:
+          value: [ssl, firewall]
+      flavour-specific:
+        large:
+          cpu:
+            value: 2
+            soft: true
+          ram:
+            value: 10
+        medium:
+          cpu:
+            value: 1
+            soft: true
+          ram:
+            value: 5
+    backend:
+      common:
+        bwIn:
+          value: 1000
+        bwOut:
+          value: 600
+        availability:
+          value: 98
+          soft: true
+        security:
+          value: [ssl]
+      flavour-specific:
+        large:
+          cpu:
+            value: 4
+            soft: true
+          ram:
+            value: 80
+        medium:
+          cpu:
+            value: 2
+            soft: true
+          ram:
+            value: 40
+        tiny:
+          cpu:
+            value: 1
+            soft: true
+          ram:
+            value: 20
+    database:
+      common:
+        bwIn:
+          value: 200
+        bwOut:
+          value: 200
+        availability:
+          value: 99
+          soft: true
+        cpu:
+          value: 1
+          soft: true
+        ram:
+          value: 80
+          soft: true
+        storage:
+          value: 512
+          soft: true
+        security:
+          value: [ssl, encrypted_storage]
+  dependencies:
+    frontend:
+      medium:
+        backend:
+          latency:
+            value: 50
+      large:
+        backend:
+          latency:
+            value: 50
+    backend:
+      tiny:
+        database:
+          latency:
+            value: 50
+          availability:
+            value: 98
+      medium:
+        database:
+          latency:
+            value: 50
+          availability:
+            value: 98
+      large:
+        database:
+          latency:
+            value: 50
+          availability:
+            value: 98
+  budget:
+    cost: 5000
+    carbon: 5000

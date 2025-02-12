@@ -1,0 +1,184 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Input data for video_analytics in my_infrastructure %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Comps = {backend, database, frontend};
+mustComps = {frontend};
+Flavs = {cloud, edge, standard};
+Flav = [{cloud, edge}, {standard}, {cloud, edge}];
+imp = array2d(Comps, Flavs, [
+	%cloud, edge, standard
+	2, 1, 0, % backend
+	0, 0, 1, % database
+	2, 1, 0, % frontend
+]);
+Uses = array2d(CompFlavs, CompFlavs, [
+	%backend-cloud, backend-edge, database-standard, frontend-cloud, frontend-edge
+	0, 0, 1, 0, 0, % backend-cloud
+	0, 0, 0, 0, 0, % backend-edge
+	0, 0, 0, 0, 0, % database-standard
+	1, 0, 0, 0, 0, % frontend-cloud
+	0, 1, 0, 0, 0, % frontend-edge
+]);
+mayUse = array2d(Comps, CompFlavs, [
+	%backend-cloud, backend-edge, database-standard, frontend-cloud, frontend-edge
+	0, 0, 0, 1, 1, % backend
+	1, 0, 0, 0, 0, % database
+	0, 0, 0, 0, 0, % frontend
+]);
+CRes = {bwIn, bwOut, cpu, ram, storage};
+NRes = {availability, encrypted_storage, firewall, latency, ssl};
+MAX_RBOUNDS = 512;
+MIN_RBOUNDS = 0;
+worstBounds = [
+	MIN_RBOUNDS, % bwIn
+	MIN_RBOUNDS, % bwOut
+	MIN_RBOUNDS, % cpu
+	MIN_RBOUNDS, % ram
+	MIN_RBOUNDS, % storage
+	MIN_RBOUNDS, % availability
+	MIN_RBOUNDS, % encrypted_storage
+	MIN_RBOUNDS, % firewall
+	MAX_RBOUNDS, % latency
+	MIN_RBOUNDS, % ssl
+];
+bestBounds = [
+	MAX_RBOUNDS, % bwIn
+	MAX_RBOUNDS, % bwOut
+	MAX_RBOUNDS, % cpu
+	MAX_RBOUNDS, % ram
+	MAX_RBOUNDS, % storage
+	MAX_RBOUNDS, % availability
+	MAX_RBOUNDS, % encrypted_storage
+	MAX_RBOUNDS, % firewall
+	MIN_RBOUNDS, % latency
+	MAX_RBOUNDS, % ssl
+];
+
+comReq = array2d(CompFlavs, Res, [
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	10, 10, 2, 4, 8, 90, 1, 1, MAX_RBOUNDS, 1, % backend-cloud
+	10, 10, 1, 2, 8, 90, 1, MIN_RBOUNDS, MAX_RBOUNDS, 1, % backend-edge
+	20, 10, 1, 8, 256, 99, 1, MIN_RBOUNDS, MAX_RBOUNDS, 1, % database-standard
+	10, 10, 2, 4, 8, 90, 1, 1, MAX_RBOUNDS, 1, % frontend-cloud
+	10, 10, 1, 2, 8, 90, MIN_RBOUNDS, 1, MAX_RBOUNDS, 1, % frontend-edge
+]);
+Nodes = {n1, n2, n3};
+
+nodeCap = array2d(Nodes0, Res,
+	[bestBounds[r] | r in Res] ++ [ % No node
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	100, 200, 4, 8, 256, 90, 1, 1, 0, 1, % n1
+	100, 200, 4, 8, 256, 95, 1, 0, 0, 1, % n2
+	500, 500, 16, 32, 512, 99, 1, 1, 0, 1, % n3
+]);
+depReq = array4d(Comps, Flavs, Comps, Res, [
+
+	% backend
+
+	% cloud
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, 99, MIN_RBOUNDS, MIN_RBOUNDS, 20, MIN_RBOUNDS, % database
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
+
+	% edge
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
+
+	% standard
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
+
+
+	% database
+
+	% cloud
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
+
+	% edge
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
+
+	% standard
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
+
+
+	% frontend
+
+	% cloud
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, 98, MIN_RBOUNDS, MIN_RBOUNDS, 20, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
+
+	% edge
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, 90, MIN_RBOUNDS, MIN_RBOUNDS, 10, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
+
+	% standard
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % backend
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % database
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % frontend
+
+
+]);
+linkCap = array3d(Nodes0, Nodes0, Res, [
+
+	% 0
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, % 0
+	MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, % n1
+	MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, % n2
+	MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, % n3
+
+	% n1
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, % 0
+	100, 200, 4, 8, 256, 90, 1, 1, 0, 1, % n1
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, 98, MIN_RBOUNDS, MIN_RBOUNDS, 10, MIN_RBOUNDS, % n2
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % n3
+
+	% n2
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, % 0
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, 98, MIN_RBOUNDS, MIN_RBOUNDS, 10, MIN_RBOUNDS, % n1
+	100, 200, 4, 8, 256, 95, 1, 0, 0, 1, % n2
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, 99, MIN_RBOUNDS, MIN_RBOUNDS, 20, MIN_RBOUNDS, % n3
+
+	% n3
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, % 0
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MAX_RBOUNDS, MIN_RBOUNDS, % n1
+	MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, MIN_RBOUNDS, 99, MIN_RBOUNDS, MIN_RBOUNDS, 20, MIN_RBOUNDS, % n2
+	500, 500, 16, 32, 512, 99, 1, 1, 0, 1, % n3
+
+]);
+cost = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	0, 0, 50, 5, 1, 0, 0, 0, 0, 0, % n1
+	0, 0, 50, 5, 1, 0, 0, 0, 0, 0, % n2
+	0, 0, 100, 10, 1, 0, 0, 0, 0, 0, % n3
+]);
+carb = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node
+	%bwIn, bwOut, cpu, ram, storage, availability, encrypted_storage, firewall, latency, ssl
+	0, 0, 27, 0, 0, 0, 0, 0, 0, 0, % n1
+	0, 0, 35, 0, 0, 0, 0, 0, 0, 0, % n2
+	0, 0, 25, 0, 0, 0, 0, 0, 0, 0, % n3
+]);
+costBudget = 600;
+carbBudget = 500000;

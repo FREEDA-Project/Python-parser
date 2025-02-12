@@ -1,0 +1,44 @@
+name: my_infrastructure
+nodes:
+  n1:
+    capabilities:
+      cpu: 4
+      ram: 8
+      storage: 256
+      bwIn: 100
+      bwOut: 200
+      availability: 90
+      security: [ssl, firewall, encrypted_storage]
+    profile:
+      cost: {cpu: 50, ram: 5, storage: 1}
+      carbon: 27
+  n2:
+    capabilities:
+      cpu: 4
+      ram: 8
+      storage: 256
+      bwIn: 100
+      bwOut: 200
+      availability: 95
+      security: [ssl, encrypted_storage]
+    profile:
+      cost: {cpu: 50, ram: 5, storage: 1}
+      carbon: 35
+  n3:
+    capabilities:
+      cpu: 16
+      ram: 32
+      storage: 512
+      bwIn: 500
+      bwOut: 500
+      availability: 99
+      security: [ssl, firewall, encrypted_storage]
+    profile:
+      cost: {cpu: 100, ram: 10, storage: 1}
+      carbon: 25
+
+links:
+  - connected_nodes: [n1, n2]
+    capabilities: {latency: 10, availability: 98}
+  - connected_nodes: [n2, n3]
+    capabilities: {latency: 20, availability: 99}
