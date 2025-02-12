@@ -44,7 +44,7 @@ def create_dag(graph, components_name, flavours_names):
 
 def generate_topology(starter_graph, components_amount):
     components_name = ["component_" + str(c) for c in range(1, components_amount + 1)]
-    flavours_names = [[f] for f in ["flavour_1"] * len(components_name)]
+    flavours_names = [[f] for f in ["flavour_0"] * len(components_name)]
 
     uses_names = create_dag(starter_graph, components_name, flavours_names)
 
