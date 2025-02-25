@@ -33,6 +33,9 @@ def topological_sort(nodes, graph):
 
     return topo_order
 
+def merge_resource_name_list(resource_list_name: str, element: str):
+    return resource_list_name + "_" + element
+
 class IntermediateStructure:
     def __init__(
         self,
@@ -111,7 +114,7 @@ class IntermediateStructure:
         if resource_name is None:
             resource_name = r.name
         else:
-            resource_name = r.name + "_" + resource_name
+            resource_name = merge_resource_name_list(r.name, resource_name)
 
         if r.consumable:
             self.consumable_resource.add(resource_name)
@@ -228,7 +231,7 @@ class IntermediateStructure:
                             if e not in r.resource.choices:
                                 raise AssertionError(f"Invalid list resource choice \"{r.resource.name}\" in component {c.name}")
                             self.add_resource(r.resource, e)
-                            self.component_requirements[(c.name, f.name, e)] = 1
+                            self.component_requirements[(c.name, f.name, merge_resource_name_list(r.resource.name, e))] = 1
                             self.maybe_update_bounds(1)
                             self.maybe_update_resource_bounds(r.resource, 1)
                             self.maybe_update_resource_bounds(r.resource, 0)
@@ -271,7 +274,7 @@ class IntermediateStructure:
                         if e not in c.resource.choices:
                             raise AssertionError(f"Invalid list resource choice \"{c.resource.name}\" in node {node.name}")
                         self.add_resource(c.resource, e)
-                        self.node_capabilities[(node.name, e)] = 1
+                        self.node_capabilities[(node.name, merge_resource_name_list(c.resource.name, e))] = 1
                         self.maybe_update_bounds(1)
                         self.maybe_update_resource_bounds(c.resource, 1)
                         self.maybe_update_resource_bounds(c.resource, 0)
