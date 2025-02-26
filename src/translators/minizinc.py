@@ -121,11 +121,20 @@ class MiniZincTranslator(Translator):
 
     def make_may_use(self, struct):
         result = "mayUse = array2d(Comps, CompFlavs, ["
-        mayUse = {
-            (ct, self.combine_comp_flav(cf, ff)) : 1
-            for (cf, ff), uses_list in struct.uses.items()
-            for ct, _ in uses_list
-        }
+
+        mayUse = {}
+        for c in struct.components:
+            for c_prime in struct.components:
+                for f_prime in struct.flavours[c_prime]:
+                    is_used = False
+                    for f in struct.flavours[c]:
+                        if ((c_prime, f_prime) in struct.uses) and ((c, f) in struct.uses[(c_prime, f_prime)]):
+                            is_used = True
+
+                    if is_used:
+                        mayUse.update({
+                            (c, self.combine_comp_flav(c_prime, f_prime)): 1
+                        })
 
         result += "\n" + self.construct_explicit(
             mayUse,
