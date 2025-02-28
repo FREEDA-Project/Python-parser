@@ -89,15 +89,16 @@ class IntermediateStructure:
             key=lambda x: self.components.index(x)
         )
 
-        self.flavs = []
-        for _, f in comp_flavs:
-            if f not in self.flavs:
-                self.flavs.append(f)
-
         self.flavours = OrderedDict(sorted(
             self.flavours.items(),
             key=lambda x: self.components.index(x[0])
         ))
+
+        self.flavs = []
+        for fs in self.flavours.values():
+            for f in fs:
+                if f not in self.flavs:
+                    self.flavs.append(f)
 
         self.consumable_resource = sorted(self.consumable_resource)
         self.non_consumable_resource = sorted(self.non_consumable_resource)
