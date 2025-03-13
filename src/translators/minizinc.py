@@ -21,9 +21,16 @@ class MiniZincTranslator(Translator):
     def __init__(self, struct: IntermediateStructure):
         super(MiniZincTranslator, self).__init__(struct)
 
+        flavs_order = {e : i for i, e in enumerate(struct.flavs)}
+
+        self.flavours = {
+            c : sorted(f, key=lambda x: flavs_order.get(x, float('inf')))
+            for c, f in struct.flavours.items()
+        }
+
         self.compflavs = [
             self.combine_comp_flav(c, f)
-            for c, fs in struct.flavours.items()
+            for c, fs in self.flavours.items()
             for f in fs
         ]
 
@@ -42,7 +49,7 @@ class MiniZincTranslator(Translator):
         self.output.append("Flavs = {" + ", ".join(struct.flavs) + "};")
         self.output.append("Flav = [" + ", ".join(
             "{" + ", ".join(fs) + "}"
-            for fs in struct.flavours.values()
+            for fs in self.flavours.values()
         ) + "];")
 
         self.output.append(self.make_importance(struct))
@@ -125,9 +132,9 @@ class MiniZincTranslator(Translator):
         mayUse = {}
         for c in struct.components:
             for c_prime in struct.components:
-                for f_prime in struct.flavours[c_prime]:
+                for f_prime in self.flavours[c_prime]:
                     is_used = False
-                    for f in struct.flavours[c]:
+                    for f in self.flavours[c]:
                         if ((c_prime, f_prime) in struct.uses) and ((c, f) in struct.uses[(c_prime, f_prime)]):
                             is_used = True
 
