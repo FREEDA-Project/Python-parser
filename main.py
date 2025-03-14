@@ -6,6 +6,7 @@ from loader import load_application, load_infrastructure, load_resources
 from src.data.resources import default_resources
 from src.language.intermediate_language import IntermediateStructure
 from src.translators.minizinc import MiniZincTranslator
+from src.translators.mof import MOFTranslator
 from src.translators.zephyrus import ZephyrusTranslator
 
 def main(
@@ -30,6 +31,8 @@ def main(
 
     if format == "minizinc":
         translated = MiniZincTranslator(intermediate_structure)
+    elif format == "mof":
+        translated = MOFTranslator(intermediate_structure)
     elif format == "zephyrus":
         translated = ZephyrusTranslator(intermediate_structure)
     else:
@@ -44,7 +47,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--format",
         "-f",
-        choices=["minizinc", "smt", "ampl", "zephyrus"],
+        choices=["minizinc", "mof", "smt", "ampl", "zephyrus"],
         default="minizinc",
         help="Output format",
     )
