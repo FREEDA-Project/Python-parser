@@ -226,7 +226,7 @@ output [
                     if struct.resource_minimization[r]:
                         for c in struct.components:
                             for i in self.flavours[c]:
-                                if (c, i, r) in struct.component_requirements:
+                                if (c, i, r) in struct.component_requirements and struct.component_requirements[(c, i, r)] != self.wbounds[r]:
                                     lhs.append(
                                         str(struct.component_requirements[(c, i, r)])
                                         + " * " + self.make_d(c, i, j)
@@ -287,7 +287,7 @@ output [
             for r in struct.resources
             for n in struct.nodes
         } | {
-            (n, n, r) : min_rboud if struct.resource_minimization[r] else max_rbound
+            (n, n, r) : struct.node_capabilities[(n, r)] if (n, r) in struct.node_capabilities else 0
             for r in struct.resources
             for n in struct.nodes
         }
@@ -307,6 +307,7 @@ output [
                               result.append(
                                 str(struct.dependencies[(cs, fs, cd, r)])
                                 + " * " + self.make_d(cs, fs, js)
+                                + " * " + self.make_d(cd, fd, jd)
                                 + " <= "
                                 + str(lcap[(js, jd, r)])
                             )
@@ -316,13 +317,14 @@ output [
                                 + " >= "
                                 + str(lcap[(js, jd, r)])
                                 + " * " + self.make_d(cs, fs, js)
+                                + " * " + self.make_d(cd, fd, jd)
                             )
 
         return result
 
     def make_obj(self, struct):
         result = "var int: obj = " + "\n\t+ ".join(
-            str(struct.importance[(c, i)]) + " * (" + "\n\t+ ".join(self.make_d(c, i, j) for j in struct.nodes) + ")"
+            str(struct.importance[(c, i)]) + " * (" + "\n\t\t+ ".join(self.make_d(c, i, j) for j in struct.nodes) + ")"
             for c in struct.components
             for i in self.flavours[c]
         ) + ";\n"
