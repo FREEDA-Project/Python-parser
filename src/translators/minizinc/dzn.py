@@ -1,77 +1,10 @@
-from typing import Callable
-from itertools import product
-
 from src.language.intermediate_language import IntermediateStructure
 from src.translators.translator import Translator
+from .utils import construct_explicit, combine_comp_flav
 
-def batcher(iterable, n):
-    result = []
-    i = 0
-    while i < len(iterable):
-        result.append(iterable[i:i+n])
-        i += n
-    return result
-
-def matrix_creator(
-    batched_indexes: list[tuple],
-    indexes: list[tuple[set, str]],
-    values: dict,
-    n: int,
-    no_value: Callable[[int], str]
-):
-    if n == 1:
-        return (
-            "\t" + ", ".join([
-                str(values[i]) if i in values else str(no_value(i))
-                for i in batched_indexes
-            ]) + ", % " + str(batched_indexes[0][-2])
-        )
-    if n == 2:
-        return (
-            "\t%" + ", ".join(indexes[-1][0]) + "\n" +
-            "\n".join([
-                matrix_creator(i, indexes, values, n - 1, no_value)
-                for i in batched_indexes
-            ])
-        )
-
-    result = ""
-    for i, e in enumerate(batched_indexes):
-        idxs = indexes[0][0]
-        idx = list(idxs.keys())[i] if isinstance(idxs, dict) else idxs[i]
-
-        result += (
-            "\n\t% " + idx +
-            "\n" + matrix_creator(e, indexes[1:], values, n - 1, no_value) +
-            "\n"
-        )
-    return result
-
-def construct_explicit(
-    values: dict,
-    indexes: list[tuple[set, str]],
-    no_value: Callable[[int], str]
-) -> str:
-    only_indexes = list(product(*(i[0] for i in indexes)))
-    batched_indexes = only_indexes
-    for index_values, _ in list(reversed(indexes))[:-1]:
-        batched_indexes = batcher(batched_indexes, len(index_values))
-
-    return matrix_creator(
-        batched_indexes,
-        indexes,
-        values,
-        len(indexes),
-        no_value
-    ) + "\n]);"
-
-def combine_comp_flav(c, f):
-    separator = "_"
-    return str(c) + separator + str(f)
-
-class MiniZincTranslator(Translator):
+class DZNTranslator(Translator):
     def __init__(self, structure: IntermediateStructure):
-        super(MiniZincTranslator, self).__init__(structure)
+        super(DZNTranslator, self).__init__(structure)
 
         self.comps_initial = "Comps = {"
         self.mustcomps_initial = "mustComps = {"
@@ -80,16 +13,21 @@ class MiniZincTranslator(Translator):
         self.importance_initial = "imp = array2d(Comps, Flavs, [\n"
         self.uses_initial = "Uses = array2d(CompFlavs, CompFlavs, ["
         self.mayUse_initial = "mayUse = array2d(Comps, CompFlavs, ["
+        self.cres_initial = "CRes = {"
+        self.nres_initial = "NRes = {"
         self.max_bound_initial = "MAX_RBOUNDS = "
         self.min_bound_initial = "MIN_RBOUNDS = "
         self.worst_bound_initial = "worstBounds = [\n"
         self.best_bound_initial = "bestBounds = [\n"
         self.comReq_initial = "comReq = array2d(CompFlavs, Res, [\n"
+        self.nodes_initial = "Nodes = {"
         self.nodeCap_initial = "nodeCap = array2d(Nodes0, Res,\n"
         self.depReq_initiale = "depReq = array4d(Comps, Flavs, Comps, Res, [\n"
         self.linkCap_initial = "linkCap = array3d(Nodes0, Nodes0, Res, [\n"
         self.cost_initial = "cost = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n"
         self.carb_initial = "carb = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n"
+        self.costbudget_initial = "costBudget = "
+        self.carbbudget_initial = "carbBudget = "
 
         flavs_order = {e : i for i, e in enumerate(self.structure.flavs)}
 
@@ -128,14 +66,14 @@ class MiniZincTranslator(Translator):
         self.output.append(self.make_uses())
         self.output.append(self.make_may_use())
 
-        self.output.append("CRes = {" + ", ".join(self.structure.consumable_resource) + "};")
-        self.output.append("NRes = {" + ", ".join(self.structure.non_consumable_resource) + "};")
+        self.output.append(self.cres_initial + ", ".join(self.structure.consumable_resource) + "};")
+        self.output.append(self.nres_initial + ", ".join(self.structure.non_consumable_resource) + "};")
 
         self.output.append(self.make_resources_bounds())
 
         self.output.append(self.make_component_requirement())
 
-        self.output.append("Nodes = {" + ", ".join(self.structure.nodes) + "};\n")
+        self.output.append(self.nodes_initial + ", ".join(self.structure.nodes) + "};\n")
         self.output.append(self.make_node_capabilities())
 
         self.output.append(self.make_dependency_requirement())
@@ -146,8 +84,8 @@ class MiniZincTranslator(Translator):
 
         self.output.append(self.make_carb())
 
-        self.output.append("costBudget = " + str(self.structure.cost_budget) + ";")
-        self.output.append("carbBudget = " + str(self.structure.carbon_budget) + ";")
+        self.output.append(self.costbudget_initial + str(self.structure.cost_budget) + ";")
+        self.output.append(self.carbbudget_initial + str(self.structure.carbon_budget) + ";")
 
         return self
 
