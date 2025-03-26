@@ -4,7 +4,6 @@ from src.data.resources import (
     Resource,
     ListResource
 )
-
 from src.data.applications import (
     Flavour,
     Component,
@@ -19,6 +18,14 @@ from src.data.infrastructures import (
     Node,
     Link,
     Infrastructure
+)
+from src.data.constraints import(
+    AvoidConstraints,
+    AffinityConstraints,
+    AntiAffinityConstraints,
+    FlavourConstraints,
+    ComponentConstraints,
+    Constraints
 )
 
 def get_resource(resources: list[Resource], r_name: Resource):
@@ -244,3 +251,52 @@ def load_resources(data: dict[str, Any]) -> list[Resource]:
                 worst_bound
             ))
     return resources
+
+def load_constraints(data) -> Constraints:
+    component_constraints = []
+    for comp_name, comp_flavs in data["requirements"]["components"].items():
+        constraint_flavours = []
+        for flav_name, flav_constraints in comp_flavs.items():
+            constraints = []
+            for constraint_name, constraint_values in flav_constraints.items():
+                if constraint_name == "avoid":
+                    c = AvoidConstraints(
+                        constraint_values["value"],
+                        constraint_values["energy_oriented"],
+                        constraint_values["resilience_oriented"],
+                        constraint_values["soft"]
+                    )
+                elif constraint_name == "affinity":
+                    c = AffinityConstraints(
+                        constraint_values["value"],
+                        constraint_values["energy_oriented"],
+                        constraint_values["resilience_oriented"],
+                        constraint_values["soft"]
+                    )
+                else: # antiaffinity
+                    c = AntiAffinityConstraints(
+                        constraint_values["value"],
+                        constraint_values["energy_oriented"],
+                        constraint_values["resilience_oriented"],
+                        constraint_values["soft"]
+                    )
+                constraints.append(c)
+
+            constraint_flavours.append(FlavourConstraints(flav_name, constraints))
+
+        component_constraints.append(ComponentConstraints(comp_name, constraint_flavours))
+
+    return Constraints(component_constraints)
+
+def load_old_deployment(data: str) -> dict[str, str]:
+    result = {}
+    for l in data.split("\n")[:-3]:
+        if l.startswith("Component") and not l.endswith("not deployed."):
+            words = l.split(" ")
+            component = words[1]
+            flavour = words[5]
+            node = words[8][:-1]
+
+            result.update({(component, flavour) : node})
+
+    return result

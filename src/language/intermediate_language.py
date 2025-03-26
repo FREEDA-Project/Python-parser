@@ -5,6 +5,11 @@ from collections import OrderedDict
 from src.data.resources import Resource
 from src.data.applications import Application
 from src.data.infrastructures import Infrastructure
+from src.data.constraints import (
+    Constraints,
+    AvoidConstraints,
+    AffinityConstraints
+)
 
 def find_resource(resources) -> str:
     return "cpu" if "cpu" in resources else list(resources)[0]
@@ -41,7 +46,9 @@ class IntermediateStructure:
         self,
         app: Application,
         infrastructure: Infrastructure,
-        flavour_order_strategy: str
+        flavour_order_strategy: str,
+        constraints: Constraints = None,
+        old_deployment: dict[str, str] = None
     ) -> None:
         self.max_bound = None
         self.min_bound = None
@@ -71,6 +78,10 @@ class IntermediateStructure:
         self.node_carb = OrderedDict()
         self.link_capacity = OrderedDict()
         self.initialize_with_infrastruture(infrastructure)
+
+        self.old_deployment = OrderedDict(old_deployment) if old_deployment is not None else None
+
+        self.constraints = self.initialize_with_constraints(constraints)
 
         # After filling it, give it a topological order
         comp_flavs = sorted(
@@ -329,3 +340,56 @@ class IntermediateStructure:
                         self.maybe_update_resource_bounds(c.resource, c.value)
                         self.link_capacity[(node.name, t, c.resource.name)] = c.value
                         self.link_capacity[(t, node.name, c.resource.name)] = c.value
+
+    def initialize_with_constraints(self, constraints: Constraints):
+        avoid = {}
+        affinity = {}
+        antiaffinity = {}
+
+        if constraints is None:
+            return {
+                "avoid" : avoid,
+                "affinity": affinity,
+                "antiaffinity": antiaffinity
+            }
+
+        for comp in constraints.component_constraints:
+            if comp.name not in self.components:
+                raise ValueError(f"No component '{comp.name}'")
+
+            for flav in comp.flavoured_constraints:
+                if flav.name not in self.flavours[comp.name]:
+                    raise ValueError(f"No flavour '{flav.name}' for component '{comp.name}'")
+
+                for cons in flav.constraints:
+                    if isinstance(cons, AvoidConstraints):
+                        if cons.value not in self.nodes:
+                            raise ValueError(f"Unable to generate constraint 'avoid' for node {cons.value} in the infrastructure")
+
+                        avoid.update({
+                            (comp.name, flav.name) : cons.value
+                        })
+                    elif isinstance(cons, AffinityConstraints):
+                        if cons.component not in self.components:
+                            raise ValueError(f"Unable to generate constraint 'affinity' for components {comp.name}-{cons.component}")
+                        if cons.flavour not in self.flavours[cons.component]:
+                            raise ValueError(f"Unable to generate constraint 'affinity' for ({cons.component}, {cons.flavour})")
+
+                        affinity.update({
+                            (comp.name, flav.name) : (cons.component, cons.flavour)
+                        })
+                    else: # AntiAffinityConstraints
+                        if cons.component not in self.components:
+                            raise ValueError(f"Unable to generate constraint 'affinity' for components {comp.name}-{cons.component}")
+                        if cons.flavour not in self.flavours[cons.component]:
+                            raise ValueError(f"Unable to generate constraint 'affinity' for ({cons.component}, {cons.flavour})")
+
+                        antiaffinity.update({
+                            (comp.name, flav.name) : (cons.component, cons.flavour)
+                        })
+
+        return {
+            "avoid" : avoid,
+            "affinity": affinity,
+            "antiaffinity": antiaffinity
+        }

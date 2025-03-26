@@ -20,7 +20,6 @@ output [
 ];
 """
 
-
 class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
 
     def make_d(self, c, i, j) -> str:
@@ -337,3 +336,32 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
 
     def to_string(self) -> str:
         return "\n".join(self.output)
+
+class MZNUnrollSecondPhaseTranslator(MZNUnrollTranslator):
+    def __init__(self, structure):
+        super(MZNUnrollSecondPhaseTranslator, self).__init__(structure)
+
+    def make_obj(self):
+        result = "var int: obj = " + "\n\t+ ".join([
+            self.make_d(c, i, j)
+            for (c, i), j in self.structure.old_deployment.items()
+        ]) + ";"
+        return result
+
+    def translate(self):
+        super().translate()
+
+        for (c, f), n in self.structure.constraints["avoid"].items():
+            self.output.append(f"constraint {self.make_d(c, f, n)} = 0;")
+        for (c1, f1), (c2, f2) in self.structure.constraints["affinity"].items():
+            for j in self.structure.nodes:
+                self.output.append(
+                    f"constraint {self.make_d(c1, f1, j)} * {self.make_d(c2, f2, j)} = 1;"
+                )
+        for (c1, f1), (c2, f2) in self.structure.constraints["antiaffinity"].items():
+            for j in self.structure.nodes:
+                self.output.append(
+                    f"constraint {self.make_d(c1, f1, j)} * {self.make_d(c2, f2, j)} = 0;"
+                )
+
+        return self

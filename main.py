@@ -7,7 +7,7 @@ from src.data.resources import default_resources
 from src.language.intermediate_language import IntermediateStructure
 from src.translators.minizinc.dzn import DZNTranslator
 from src.translators.minizinc.mzn import MZNSecondPhaseTranslator
-from src.translators.minizinc.unroll import MZNUnrollTranslator
+from src.translators.minizinc.unroll import MZNUnrollTranslator, MZNUnrollSecondPhaseTranslator
 from src.translators.zephyrus import ZephyrusTranslator
 
 def main(
@@ -50,7 +50,10 @@ def main(
         else:
             translated = MZNSecondPhaseTranslator(intermediate_structure).translate()
     elif format == "mof": # Experimental: expenct bugs in the model
-        translated = MZNUnrollTranslator(intermediate_structure).translate()
+        if first_deployment:
+            translated = MZNUnrollTranslator(intermediate_structure).translate()
+        else:
+            translated = MZNUnrollSecondPhaseTranslator(intermediate_structure).translate()
     elif format == "zephyrus": # Only for the first deployment
         translated = ZephyrusTranslator(intermediate_structure)
     else:
