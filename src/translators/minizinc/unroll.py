@@ -2,6 +2,25 @@ from src.language.intermediate_language import IntermediateStructure
 from src.translators.translator import Translator
 from .utils import combine_comp_flav
 
+model_output = """
+function int: Idx(Comps: c, Flavs: f) = sum (i in 1..c-1)(length(Flav[Comps[i]])) + arg_max([f = i | i in Flav[c]]);
+output [
+  if exists(i in Flav[c], j in Nodes0)(fix(D[Idx(c, i), j]) > 0) then
+    let {
+      int: f = [Flavs[i] | i in Flav[c] where exists(j in Nodes0)(fix(D[Idx(c, i), j]) > 0)][1],
+      int: n = [j | j in Nodes0 where exists(i in Flav[c])(fix(D[Idx(c, i), j]) > 0)][1]
+    } in
+    "Component \(c) deployed in flavour \(Flavs[f]) on node \(Nodes[n]).\\n"
+  else
+    "Component \(c) not deployed.\\n"
+  endif
+  | c in Comps
+] ++ [
+  "Objective value: \(obj)\\n\\tTotal cost: \(totCost)\\n\\tTotal carb: \(totCarb)"
+];
+"""
+
+
 class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
 
     def make_d(self, c, i, j) -> str:
@@ -19,7 +38,8 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
 
         self.compflavs = [
             combine_comp_flav(c, f)
-            for c, f in self.structure.comp_flavs
+            for c, fs in self.flavours.items()
+            for f in fs
         ]
 
         self.zero_node = "0"
@@ -49,7 +69,7 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
         self.output = []
 
     def translate(self):
-        preamble = "%%% MZN optimazed for " + self.structure.app_name + " in " + self.structure.infrastructure_name + " %%%"
+        preamble = "%%% MZN optimized for " + self.structure.app_name + " in " + self.structure.infrastructure_name + " %%%"
         self.output.extend([
             "%" * len(preamble),
             preamble,
@@ -73,26 +93,11 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
         self.output.append("set of int: Nodes0 = {" + self.zero_node + "} union Nodes;\n")
 
         self.output.append("array [{0} union CompFlavs, Nodes0] of var 0..1: D;")
+        self.output.append(model_output)
         self.output.append("var int: totCost = " + self.tot_quantity(self.structure.node_cost) + ";")
         self.output.append("var int: totCarb = " + self.tot_quantity(self.structure.node_carb) + ";")
         self.output.append(self.make_obj())
         self.output.append("solve maximize obj;")
-        self.output.append("""
-function int: Idx(Comps: c, Flavs: f) = sum (i in 1..c-1)(length(Flav[Comps[i]])) + arg_max([f = i | i in Flav[c]]);
-output [
-  if exists(i in Flav[c], j in Nodes0)(fix(D[Idx(c, i), j]) > 0) then
-    let {
-      int: f = [Flavs[i] | i in Flav[c] where exists(j in Nodes0)(fix(D[Idx(c, i), j]) > 0)][1],
-      int: n = [j | j in Nodes0 where exists(i in Flav[c])(fix(D[Idx(c, i), j]) > 0)][1]
-    } in
-    "Component \(c) deployed in flavour \(Flavs[f]) on node \(Nodes[n]).\\n"
-  else
-    "Component \(c) not deployed.\\n"
-  endif
-  | c in Comps
-] ++ [
-  "Objective value: \(obj)\\n\\tTotal cost: \(totCost)\\n\\tTotal carb: \(totCarb)"
-];\n""")
 
         self.constraints = []
         self.constraints.append("totCost <= " + str(self.structure.cost_budget))
