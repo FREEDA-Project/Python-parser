@@ -1,0 +1,145 @@
+name: case_study
+components:
+  load_balancer:
+    must: true
+    flavours:
+      tiny:
+        uses:
+          - { component: frontend, min_flavour: tiny }
+      large:
+        uses:
+          - { component: frontend, min_flavour: large }
+    importance_order: [tiny, large]
+  frontend:
+    flavours:
+      tiny:
+        uses:
+          - { component: api, min_flavour: tiny }
+      large:
+        uses:
+          - { component: api, min_flavour: medium }
+          - { component: redis, min_flavour: tiny }
+    importance_order: [tiny, large]
+  api:
+    flavours:
+      tiny:
+        uses:
+          - { component: database, min_flavour: large }
+      medium:
+        uses:
+          - { component: identity_provider, min_flavour: tiny }
+          - { component: database, min_flavour: large }
+      large:
+        uses:
+          - { component: identity_provider, min_flavour: large }
+          - { component: etcd, min_flavour: large }
+          - { component: database, min_flavour: large }
+          - { component: redis, min_flavour: large }
+    importance_order: [tiny, medium, large]
+  identity_provider:
+    flavours:
+      tiny:
+        uses:
+          - { component: etcd, min_flavour: large }
+      large:
+        uses:
+          - { component: etcd, min_flavour: large }
+    importance_order: [tiny, large]
+  database:
+    flavours:
+      large:
+        uses: []
+    importance_order: [large]
+  redis:
+    flavours:
+      tiny:
+        uses: []
+      large:
+        uses: []
+    importance_order: [tiny, large]
+  etcd:
+    flavours:
+      large:
+        uses: []
+    importance_order: [large]
+requirements:
+  components:
+    load_balancer:
+      common:
+        subnet: [public]
+        security: [firewall]
+      flavour-specific:
+        tiny: { cpu: 1, ram: 2, availability: 97, energy: 598 }
+        large: { cpu: 2, ram: 4, availability: 99, energy: 747 }
+    frontend:
+      common:
+        subnet: [public]
+        security: [firewall, ssl]
+      flavour-specific:
+        tiny: { cpu: 1, ram: 2, availability: 98, energy: 475 }
+        large: { cpu: 2, ram: 4, availability: 99, energy: 594 }
+    api:
+      common:
+        subnet: [private]
+        security: [ssl]
+      flavour-specific:
+        tiny: { cpu: 1, ram: 2, availability: 97, energy: 546 }
+        medium: { cpu: 2, ram: 4, availability: 98, energy: 682 }
+        large: { cpu: 2, ram: 6, availability: 99, energy: 853 }
+    identity_provider:
+      common:
+        subnet: [private]
+        security: [ssl]
+      flavour-specific:
+        tiny: { cpu: 1, ram: 2, availability: 97, energy: 707 }
+        large: { cpu: 1, ram: 4, availability: 99, energy: 884 }
+    database:
+      common:
+        subnet: [private]
+        security: [encrypted_storage]
+      flavour-specific:
+        large: { cpu: 2, ram: 4, availability: 99, storage: 512, energy: 1361 }
+    redis:
+      common:
+        subnet: [private]
+        security: [ssl]
+      flavour-specific:
+        tiny: { cpu: 1, ram: 2, availability: 97, energy: 70 }
+        large: { cpu: 1, ram: 4, availability: 99, energy: 88 }
+    etcd:
+      common:
+        subnet: [private]
+        security: [ssl]
+      flavour-specific:
+        large: { cpu: 1, ram: 4, availability: 99, energy: 45 }
+  dependencies:
+    load_balancer:
+      tiny:
+        frontend: { latency: 50, availability: 97, energy: 5 }
+      large:
+        frontend: { latency: 25, availability: 99, energy: 5 }
+    frontend:
+      tiny:
+        api: { latency: 50, availability: 99, energy: 5 }
+      large:
+        api: { latency: 25, availability: 98, energy: 5 }
+        redis: { latency: 25, availability: 99, energy: 3 }
+    api:
+      tiny:
+        database: { latency: 60, availability: 97, energy: 11 }
+      medium:
+        identity_provider: { latency: 40, availability: 98, energy: 3 }
+        database: { latency: 40, availability: 98, energy: 11 }
+      large:
+        identity_provider: { latency: 20, availability: 99, energy: 3 }
+        etcd: { latency: 20, availability: 99, energy: 4 }
+        database: { latency: 20, availability: 99, energy: 11 }
+        redis: { latency: 20, availability: 99, energy: 1 }
+    identity_provider:
+      tiny:
+        etcd: { latency: 40, availability: 97, energy: 1 }
+      large:
+        etcd: { latency: 20, availability: 99, energy: 1 }
+  budget:
+    cost: 2000000
+    carbon: 2000000

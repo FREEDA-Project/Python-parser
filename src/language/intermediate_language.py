@@ -69,6 +69,7 @@ class IntermediateStructure:
         self.best_bounds = OrderedDict()
         self.component_requirements = OrderedDict()
         self.dependencies = OrderedDict()
+        self.energy = OrderedDict()
         self.initialize_with_app(app, flavour_order_strategy)
 
         self.infrastructure_name = infrastructure.name
@@ -237,6 +238,8 @@ class IntermediateStructure:
                     if len(f.uses) > 0
                 }
 
+                self.energy.update({(c.name, f.name): f.energy})
+
                 for r in chain(c.requirements, f.requirements):
                     if isinstance(r.value, list):
                         for e in r.value:
@@ -279,6 +282,7 @@ class IntermediateStructure:
     def initialize_with_infrastruture(self, infrastructure: Infrastructure):
         for node in infrastructure.nodes:
             self.nodes.append(node.name)
+            self.node_carb[node.name] = node.carb
 
             for c in node.capabilities:
                 if isinstance(c.value, list):
@@ -291,16 +295,14 @@ class IntermediateStructure:
                         self.maybe_update_resource_bounds(c.resource, 1)
                         self.maybe_update_resource_bounds(c.resource, 0)
                         self.node_cost[(node.name, e)] = c.cost if c.cost is not None else 0
-                        self.node_carb[(node.name, e)] = c.carb if c.carb is not None else 0
                 else:
                     self.add_resource(c.resource)
                     self.node_capabilities[(node.name, c.resource.name)] = c.value
                     self.maybe_update_bounds(c.value)
                     self.maybe_update_resource_bounds(c.resource, c.value)
                     self.node_cost[(node.name, c.resource.name)] = c.cost if c.cost is not None else 0
-                    self.node_carb[(node.name, c.resource.name)] = c.carb if c.carb is not None else 0
 
-            # If a node cost (or carbon) has all zero values, it means that
+            # If a node cost has all zero values, it means that
             # there was a single carbon value inside the node itself. Search a
             # consumable resource (cpu or the first one) to assign the value to
             a_resource = find_resource(self.consumable_resource)
@@ -312,15 +314,6 @@ class IntermediateStructure:
             if all([v == 0 for _, v in node_cost]):
                 self.node_cost[(node.name, a_resource)] = node.cost
             self.node_cost = OrderedDict({k : v for k, v in self.node_cost.items() if v != 0})
-
-            node_carb = [
-                (c, v)
-                for (n, c), v in self.node_carb.items()
-                if n == node.name
-            ]
-            if all([v == 0 for _, v in node_carb]):
-                self.node_carb[(node.name, a_resource)] = node.carb
-            self.node_carb = OrderedDict({k : v for k, v in self.node_carb.items() if v != 0})
 
             # link matrix
             to_nodes = [

@@ -105,14 +105,17 @@ def create_components(data, resources: list[Resource]) -> set[Component]:
         if "flavour-specific" in req_comp_data:
             for req_flav_name, req_flavs_data in req_comp_data["flavour-specific"].items():
                 for req_name, req_data in req_flavs_data.items():
-                    resource = get_resource(resources, req_name)
                     flavour_of_component = [
                         f
                         for c in components
                         for f in c.flavours
                         if c.name == c_name and f.name == req_flav_name
                     ][0]
-                    add_to_array(flavour_of_component, resource, req_data)
+                    if req_name == "energy":
+                        flavour_of_component.add_energy(req_data)
+                    else:
+                        resource = get_resource(resources, req_name)
+                        add_to_array(flavour_of_component, resource, req_data)
 
     return components
 
@@ -131,6 +134,8 @@ def create_dependencies(
 
                 requirements = set()
                 for req_name, req_data in flav_requirements.items():
+                    if req_name == "energy":
+                        continue
                     resource = get_resource(resources, req_name)
                     if isinstance(req_data, dict):
                         requirements.add(Requirement(
@@ -167,25 +172,18 @@ def load_infrastructure(data, resources: list[Resource]) -> Infrastructure:
         capabilities = set()
         for c_name, c_value in node_data["capabilities"].items():
             cost = None
-            carb = None
             if (
                 (not isinstance(node_data["profile"]["cost"], (int, float)))
                 and
                 (c_name in node_data["profile"]["cost"])
             ):
                 cost = node_data["profile"]["cost"][c_name]
-            if (
-                (not isinstance(node_data["profile"]["carbon"], (int, float)))
-                and
-                (c_name in node_data["profile"]["carbon"])
-            ):
-                carb = node_data["profile"]["carbon"][c_name]
 
             resource = get_resource(resources, c_name)
-            capabilities.add(NodeCapability(resource, c_value, cost, carb))
+            capabilities.add(NodeCapability(resource, c_value, cost))
 
         profile_cost = node_data["profile"].get("cost")
-        profile_carbon = node_data["profile"].get("carbon")
+        profile_carbon = node_data["profile"].get("carbon", 0)
 
         nodes.add(Node(node_name, capabilities, profile_cost, profile_carbon))
 

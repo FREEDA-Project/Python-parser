@@ -1,0 +1,4 @@
+subnet:
+  choices: [private, public]
+  optimization: minimization
+  worst_bound: 0

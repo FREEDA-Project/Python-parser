@@ -1,0 +1,110 @@
+name: case_study
+nodes:
+  public1:
+    capabilities:
+      cpu: 8
+      ram: 16
+      storage: 1024
+      availability: 99
+      subnet: [public]
+      security: [ssl, firewall]
+    profile:
+      cost: 9
+      carbon: 402
+  public2:
+    capabilities:
+      cpu: 2
+      ram: 4
+      storage: 250
+      availability: 99
+      subnet: [public]
+      security: [ssl, firewall]
+    profile:
+      cost: 9
+      carbon: 255
+  private1:
+    capabilities:
+      cpu: 3
+      ram: 16
+      storage: 512
+      availability: 99
+      subnet: [private]
+      security: [ssl, firewall, encrypted_storage]
+    profile:
+      cost: 7
+      carbon: 346
+  private2:
+    capabilities:
+      cpu: 2
+      ram: 4
+      storage: 50
+      availability: 99
+      subnet: [private]
+      security: [ssl, firewall]
+    profile:
+      cost: 7
+      carbon: 74
+  private3:
+    capabilities:
+      cpu: 2
+      ram: 8
+      storage: 250
+      availability: 99
+      subnet: [private]
+      security: [ssl, firewall]
+    profile:
+      cost: 7
+      carbon: 620
+  private4:
+    capabilities:
+      cpu: 2
+      ram: 4
+      storage: 50
+      availability: 99
+      subnet: [private]
+      security: [ssl, firewall]
+    profile:
+      cost: 7
+      carbon: 155
+  private5:
+    capabilities:
+      cpu: 4
+      ram: 8
+      storage: 600
+      availability: 99
+      subnet: [private]
+      security: [ssl, firewall, encrypted_storage]
+    profile:
+      cost: 7
+      carbon: 290
+links:
+  - connected_nodes: [public1, public2]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [private1, private2]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [private1, private3]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [private1, private4]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [private1, private5]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [private2, private3]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [private2, private4]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [private2, private5]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [private3, private4]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [private3, private5]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [private4, private5]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [public1, private1]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [public1, private3]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [public2, private1]
+    capabilities: { latency: 10, availability: 99 }
+  - connected_nodes: [public2, private3]
+    capabilities: { latency: 10, availability: 99 }

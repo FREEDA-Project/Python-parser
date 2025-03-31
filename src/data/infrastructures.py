@@ -7,12 +7,10 @@ class NodeCapability:
         resource: Resource,
         value: Property,
         cost: float = None,
-        carb: float = None
     ):
         self.resource = resource
         self.value = value
         self.cost = cost
-        self.carb = carb
 
 class LinkCapability:
     def __init__(

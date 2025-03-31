@@ -11,6 +11,7 @@ class DZNTranslator(Translator):
         self.flavs_initial = "Flavs = {"
         self.flav_initial = "Flav = ["
         self.importance_initial = "imp = array2d(Comps, Flavs, [\n"
+        self.energy_initial = "energy = ["
         self.uses_initial = "Uses = array2d(CompFlavs, CompFlavs, ["
         self.mayUse_initial = "mayUse = array2d(Comps, CompFlavs, ["
         self.cres_initial = "CRes = {"
@@ -25,7 +26,7 @@ class DZNTranslator(Translator):
         self.depReq_initiale = "depReq = array4d(Comps, Flavs, Comps, Res, [\n"
         self.linkCap_initial = "linkCap = array3d(Nodes0, Nodes0, Res, [\n"
         self.cost_initial = "cost = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n"
-        self.carb_initial = "carb = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n"
+        self.carb_initial = "carb = array1d(Nodes0, [0] ++ [ % No node\n\t"
         self.costbudget_initial = "costBudget = "
         self.carbbudget_initial = "carbBudget = "
 
@@ -62,6 +63,8 @@ class DZNTranslator(Translator):
         ) + "];")
 
         self.output.append(self.make_importance())
+
+        self.output.append(self.make_energy())
 
         self.output.append(self.make_uses())
         self.output.append(self.make_may_use())
@@ -101,19 +104,14 @@ class DZNTranslator(Translator):
         )
         return result
 
-    def make_resources_bounds(self):
-        result = self.max_bound_initial + str(max(self.structure.worst_bounds.values())) + ";\n"
-        result += self.min_bound_initial + str(min(self.structure.best_bounds.values())) + ";\n"
+    def make_energy(self):
+        compflavs_energy = {
+            combine_comp_flav(c, f) : v
+            for (c, f), v in self.structure.energy.items()
+        }
 
-        result += self.worst_bound_initial + "".join(
-            "\t" + ("MIN_RBOUNDS" if self.structure.resource_minimization[r] else "MAX_RBOUNDS") + ", % " + r + "\n"
-            for r in self.structure.resources
-        ) + "];\n"
-        result += self.best_bound_initial + "".join(
-            "\t" + ("MAX_RBOUNDS" if self.structure.resource_minimization[r] else "MIN_RBOUNDS") + ", % " + r + "\n"
-            for r in self.structure.resources
-        ) + "];\n"
-
+        result = self.energy_initial
+        result += ", ".join(str(compflavs_energy[cf]) for cf in self.compflavs) + "];"
         return result
 
     def make_uses(self):
@@ -162,6 +160,21 @@ class DZNTranslator(Translator):
             ],
             lambda _ : "0"
         )
+        return result
+
+    def make_resources_bounds(self):
+        result = self.max_bound_initial + str(max(self.structure.worst_bounds.values())) + ";\n"
+        result += self.min_bound_initial + str(min(self.structure.best_bounds.values())) + ";\n"
+
+        result += self.worst_bound_initial + "".join(
+            "\t" + ("MIN_RBOUNDS" if self.structure.resource_minimization[r] else "MAX_RBOUNDS") + ", % " + r + "\n"
+            for r in self.structure.resources
+        ) + "];\n"
+        result += self.best_bound_initial + "".join(
+            "\t" + ("MAX_RBOUNDS" if self.structure.resource_minimization[r] else "MIN_RBOUNDS") + ", % " + r + "\n"
+            for r in self.structure.resources
+        ) + "];\n"
+
         return result
 
     def make_component_requirement(self):
@@ -253,14 +266,7 @@ class DZNTranslator(Translator):
 
     def make_carb(self):
         result = self.carb_initial
-        result += construct_explicit(
-            self.structure.node_carb,
-            [
-                (self.structure.nodes, "Nodes"),
-                (self.structure.resources, "Res")
-            ],
-            lambda _ : "0"
-        )
+        result += ", ".join(str(self.structure.node_carb[n]) for n in self.structure.nodes) + "\n]);"
         return result
 
     def to_string(self) -> str:

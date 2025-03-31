@@ -29,11 +29,15 @@ class Flavour:
     ):
         self.name = str(name)
         self.uses = uses
+        self.energy = None
         self.requirements = list()
         self.importance = importance
 
     def add_requirement(self, requirement: Requirement):
         self.requirements.append(requirement)
+
+    def add_energy(self, energy: int):
+        self.energy = energy
 
 class Component:
     def __init__(

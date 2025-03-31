@@ -25,6 +25,9 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
     def make_d(self, c, i, j) -> str:
         return "D[" + combine_comp_flav(c, i) + ", " + j + "]"
 
+    def make_d(self, cf, j) -> str:
+       return "D[" + str(cf) + ", " + j + "]"
+
     def __init__(self, struct: IntermediateStructure):
         super(MZNUnrollTranslator, self).__init__(struct)
 
@@ -93,8 +96,8 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
 
         self.output.append("array [{0} union CompFlavs, Nodes0] of var 0..1: D;")
         self.output.append(model_output)
-        self.output.append("var int: totCost = " + self.tot_quantity(self.structure.node_cost) + ";")
-        self.output.append("var int: totCarb = " + self.tot_quantity(self.structure.node_carb) + ";")
+        self.output.append("var int: totCost = " + self.tot_cost() + ";")
+        self.output.append("var int: totCarb = " + self.tot_carb() + ";")
         self.output.append(self.make_obj())
         self.output.append("solve maximize obj;")
 
@@ -127,16 +130,31 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
         )
         return result
 
-    def tot_quantity(self, quantity):
+    def tot_cost(self):
         to_sum = []
         for (c, f, r), v in self.structure.component_requirements.items():
             for n in self.structure.nodes:
-                if (n, r) in quantity and quantity[(n, r)] != self.wbounds[r]:
+                if (
+                    (n, r) in self.structure.node_cost
+                    and self.structure.node_cost[(n, r)] != self.wbounds[r]
+                ):
                     to_sum.append(
-                        str(v * quantity[n, r])
+                        str(v * self.structure.node_cost[n, r])
                         + " * "
                         + self.make_d(c, f, n)
                     )
+
+        return "\n\t+ ".join(to_sum)
+
+    def tot_carb(self):
+        to_sum = []
+        for n in self.structure.nodes:
+            for cf in self.compflavs:
+                to_sum.append(
+                    str(self.structure.energy[cf] * self.structure.node_carb[n])
+                    + " * "
+                    + self.make_d(cf, n)
+                )
 
         return "\n\t+ ".join(to_sum)
 
@@ -147,7 +165,7 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
         ]
 
         for i in self.compflavs:
-            result.append("D[" + str(i) + ", " + self.zero_node + "] = 0")
+            result.append(self.make_d(i, self.zero_node) + " = 0")
 
         return result
 
