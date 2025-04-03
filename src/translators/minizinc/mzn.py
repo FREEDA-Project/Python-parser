@@ -51,6 +51,12 @@ var int: totCarb = sum(
     i in Flav[c],
 )(
     energy[Idx(c, i)] * carb[n] * D[Idx(c, i), n]
+) + sum(
+    cs in Comps,
+    is in Flav[cs],
+    cd in Comps where mayUse[cd, Idx(cs, is)] = 1
+)(
+    energy_dependency[cs, is, cd] * round((carb[node[cs]] + carb[node[cd]]) / 2)
 );
 
 constraint forall(j in Nodes0)(D[0, j] = 0);
@@ -144,6 +150,7 @@ class MZNFirstPhaseTranslator(Translator):
         self.flav_initial = "array[Comps] of set of Flavs: Flav = ["
         self.importance_initial = "array[Comps, Flavs] of int: imp = array2d(Comps, Flavs, [\n"
         self.energy_initial = "array[CompFlavs] of int: energy = ["
+        self.energy_dependency_initial = "array[Comps, Flavs, Comps] of int: energy_dependency;"
         self.uses_initial = "array[CompFlavs, CompFlavs] of 0..1: Uses = array2d(CompFlavs, CompFlavs, ["
         self.mayUse_initial = "array[Comps, CompFlavs] of 0..1: mayUse = array2d(Comps, CompFlavs, ["
         self.cres_initial = "enum CRes = {"
@@ -204,6 +211,8 @@ class MZNFirstPhaseTranslator(Translator):
 
         self.output.append(self.make_energy())
 
+        self.output.append(self.make_energy_dependency())
+
         self.output.append(self.make_uses())
         self.output.append(self.make_may_use())
 
@@ -252,6 +261,19 @@ class MZNFirstPhaseTranslator(Translator):
 
         result = self.energy_initial
         result += ", ".join(str(compflavs_energy[cf]) for cf in self.compflavs) + "];"
+        return result
+
+    def make_energy_dependency(self):
+        result = self.energy_dependency_initial
+        result += "\n" + construct_explicit(
+            self.structure.energy_dependencies,
+            [
+                (self.structure.components, "Comps"),
+                (self.structure.flavs, "Flavs"),
+                (self.structure.components, "Comps")
+            ],
+            lambda _ : "0"
+        )
         return result
 
     def make_uses(self):

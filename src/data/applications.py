@@ -69,11 +69,13 @@ class Dependency:
         source: Component,
         flavour: Flavour,
         target: Component,
+        energy: int,
         requirements: set[Requirement]
     ):
         self.source = source
         self.flavour = flavour
         self.target = target
+        self.energy = energy
         self.requirements = requirements
 
 class Application:

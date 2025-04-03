@@ -12,6 +12,7 @@ class DZNTranslator(Translator):
         self.flav_initial = "Flav = ["
         self.importance_initial = "imp = array2d(Comps, Flavs, [\n"
         self.energy_initial = "energy = ["
+        self.energy_dependency_initial = "energy_dependency = array3d(Comps, Flavs, Comps, ["
         self.uses_initial = "Uses = array2d(CompFlavs, CompFlavs, ["
         self.mayUse_initial = "mayUse = array2d(Comps, CompFlavs, ["
         self.cres_initial = "CRes = {"
@@ -65,6 +66,7 @@ class DZNTranslator(Translator):
         self.output.append(self.make_importance())
 
         self.output.append(self.make_energy())
+        self.output.append(self.make_energy_dependency())
 
         self.output.append(self.make_uses())
         self.output.append(self.make_may_use())
@@ -112,6 +114,19 @@ class DZNTranslator(Translator):
 
         result = self.energy_initial
         result += ", ".join(str(compflavs_energy[cf]) for cf in self.compflavs) + "];"
+        return result
+
+    def make_energy_dependency(self):
+        result = self.energy_dependency_initial
+        result += "\n" + construct_explicit(
+            self.structure.energy_dependencies,
+            [
+                (self.structure.components, "Comps"),
+                (self.structure.flavs, "Flavs"),
+                (self.structure.components, "Comps")
+            ],
+            lambda _ : "0"
+        )
         return result
 
     def make_uses(self):

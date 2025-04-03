@@ -70,6 +70,7 @@ class IntermediateStructure:
         self.component_requirements = OrderedDict()
         self.dependencies = OrderedDict()
         self.energy = OrderedDict()
+        self.energy_dependencies = OrderedDict()
         self.initialize_with_app(app, flavour_order_strategy)
 
         self.infrastructure_name = infrastructure.name
@@ -262,6 +263,7 @@ class IntermediateStructure:
                     if d.source.name == c.name and d.flavour.name == f.name
                 ]
                 for dep in dependencies:
+                    self.energy_dependencies[(c.name, f.name, dep.target.name)] = dep.energy
                     for r in dep.requirements:
                         self.add_resource(r.resource)
                         self.dependencies[

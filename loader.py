@@ -154,6 +154,7 @@ def create_dependencies(
                     from_component,
                     from_flav,
                     to_component,
+                    flav_requirements["energy"],
                     requirements
                 ))
     return dependencies
