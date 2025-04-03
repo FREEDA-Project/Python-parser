@@ -337,16 +337,14 @@ class IntermediateStructure:
                         self.link_capacity[(t, node.name, c.resource.name)] = c.value
 
     def initialize_with_constraints(self, constraints: Constraints):
-        avoid = {}
-        affinity = {}
-        antiaffinity = {}
+        result = {
+            "avoid" : {},
+            "affinity": {},
+            "antiaffinity": {}
+        }
 
         if constraints is None:
-            return {
-                "avoid" : avoid,
-                "affinity": affinity,
-                "antiaffinity": antiaffinity
-            }
+            return result
 
         for comp in constraints.component_constraints:
             if comp.name not in self.components:
@@ -361,30 +359,29 @@ class IntermediateStructure:
                         if cons.value not in self.nodes:
                             raise ValueError(f"Unable to generate constraint 'avoid' for node {cons.value} in the infrastructure")
 
-                        avoid.update({
-                            (comp.name, flav.name) : cons.value
-                        })
+                        if (comp.name, flav.name) not in result["avoid"]:
+                            result["avoid"][(comp.name, flav.name)] = [cons.value]
+                        else:
+                            result["avoid"][(comp.name, flav.name)].append(cons.value)
                     elif isinstance(cons, AffinityConstraints):
                         if cons.component not in self.components:
                             raise ValueError(f"Unable to generate constraint 'affinity' for components {comp.name}-{cons.component}")
                         if cons.flavour not in self.flavours[cons.component]:
                             raise ValueError(f"Unable to generate constraint 'affinity' for ({cons.component}, {cons.flavour})")
 
-                        affinity.update({
-                            (comp.name, flav.name) : (cons.component, cons.flavour)
-                        })
+                        if (comp.name, flav.name) not in result["affinity"]:
+                            result["affinity"][(comp.name, flav.name)] = [(cons.component, cons.flavour)]
+                        else:
+                            result["affinity"][(comp.name, flav.name)].append((cons.component, cons.flavour))
                     else: # AntiAffinityConstraints
                         if cons.component not in self.components:
                             raise ValueError(f"Unable to generate constraint 'affinity' for components {comp.name}-{cons.component}")
                         if cons.flavour not in self.flavours[cons.component]:
                             raise ValueError(f"Unable to generate constraint 'affinity' for ({cons.component}, {cons.flavour})")
 
-                        antiaffinity.update({
-                            (comp.name, flav.name) : (cons.component, cons.flavour)
-                        })
+                        if (comp.name, flav.name) not in result["antiaffinity"]:
+                            result["antiaffinity"][(comp.name, flav.name)] = [(cons.component, cons.flavour)]
+                        else:
+                            result["antiaffinity"][(comp.name, flav.name)].append((cons.component, cons.flavour))
 
-        return {
-            "avoid" : avoid,
-            "affinity": affinity,
-            "antiaffinity": antiaffinity
-        }
+        return result

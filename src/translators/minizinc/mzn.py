@@ -471,17 +471,20 @@ class MZNSecondPhaseTranslator(MZNFirstPhaseTranslator):
         )
         self.output.append(old_deployment)
 
-        for (c, f), n in self.structure.constraints["avoid"].items():
-            self.output.append(
-                f"constraint D[Idx({c}, {f}), {n}] = 0;"
-            )
-        for (c1, f1), (c2, f2) in self.structure.constraints["affinity"].items():
-            self.output.append(
-                f"constraint D[Idx({c1}, {f1}), node[{c1}]] = D[Idx({c2}, {f2}), node[{c2}]];"
-            )
-        for (c1, f1), (c2, f2) in self.structure.constraints["antiaffinity"].items():
-            self.output.append(
-                f"constraint D[Idx({c1}, {f1}), node[{c1}]] != D[Idx({c2}, {f2}), node[{c2}]];"
-            )
+        for (c, f), nodes in self.structure.constraints["avoid"].items():
+            for n in nodes:
+                self.output.append(
+                    f"constraint D[Idx({c}, {f}), {n}] = 0;"
+                )
+        for (c1, f1), list_tuple_comp_flavs in self.structure.constraints["affinity"].items():
+            for c2, f2 in list_tuple_comp_flavs:
+                self.output.append(
+                    f"constraint D[Idx({c1}, {f1}), node[{c1}]] = D[Idx({c2}, {f2}), node[{c2}]];"
+                )
+        for (c1, f1), list_tuple_comp_flavs in self.structure.constraints["antiaffinity"].items():
+            for c2, f2 in list_tuple_comp_flavs:
+                self.output.append(
+                    f"constraint D[Idx({c1}, {f1}), node[{c1}]] != D[Idx({c2}, {f2}), node[{c2}]];"
+                )
 
         return self

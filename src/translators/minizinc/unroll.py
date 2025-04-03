@@ -369,17 +369,22 @@ class MZNUnrollSecondPhaseTranslator(MZNUnrollTranslator):
     def translate(self):
         super().translate()
 
-        for (c, f), n in self.structure.constraints["avoid"].items():
-            self.output.append(f"constraint {self.make_d(c, f, n)} = 0;")
-        for (c1, f1), (c2, f2) in self.structure.constraints["affinity"].items():
-            for j in self.structure.nodes:
-                self.output.append(
-                    f"constraint {self.make_d(c1, f1, j)} * {self.make_d(c2, f2, j)} = 1;"
-                )
-        for (c1, f1), (c2, f2) in self.structure.constraints["antiaffinity"].items():
-            for j in self.structure.nodes:
-                self.output.append(
-                    f"constraint {self.make_d(c1, f1, j)} * {self.make_d(c2, f2, j)} = 0;"
-                )
+        for (c, f), nodes in self.structure.constraints["avoid"].items():
+            for n in nodes:
+                self.output.append(f"constraint {self.make_d(c, f, n)} = 0;")
+
+        for (c1, f1), list_tuple_comp_flavs in self.structure.constraints["affinity"].items():
+            for c2, f2 in list_tuple_comp_flavs:
+                for j in self.structure.nodes:
+                    self.output.append(
+                        f"constraint {self.make_d(c1, f1, j)} * {self.make_d(c2, f2, j)} = 1;"
+                    )
+
+        for (c1, f1), list_tuple_comp_flavs in self.structure.constraints["antiaffinity"].items():
+            for c2, f2 in list_tuple_comp_flavs:
+                for j in self.structure.nodes:
+                    self.output.append(
+                        f"constraint {self.make_d(c1, f1, j)} * {self.make_d(c2, f2, j)} = 0;"
+                    )
 
         return self

@@ -257,29 +257,30 @@ def load_constraints(data) -> Constraints:
         constraint_flavours = []
         for flav_name, flav_constraints in comp_flavs.items():
             constraints = []
-            for constraint_name, constraint_values in flav_constraints.items():
-                if constraint_name == "avoid":
-                    c = AvoidConstraints(
-                        constraint_values["value"],
-                        constraint_values["energy_oriented"],
-                        constraint_values["resilience_oriented"],
-                        constraint_values["soft"]
-                    )
-                elif constraint_name == "affinity":
-                    c = AffinityConstraints(
-                        constraint_values["value"],
-                        constraint_values["energy_oriented"],
-                        constraint_values["resilience_oriented"],
-                        constraint_values["soft"]
-                    )
-                else: # antiaffinity
-                    c = AntiAffinityConstraints(
-                        constraint_values["value"],
-                        constraint_values["energy_oriented"],
-                        constraint_values["resilience_oriented"],
-                        constraint_values["soft"]
-                    )
-                constraints.append(c)
+            for constraint_list in flav_constraints:
+                for constraint_name, constraint_values in constraint_list.items():
+                    if constraint_name == "avoid":
+                        c = AvoidConstraints(
+                            constraint_values["value"],
+                            constraint_values["energy_oriented"],
+                            constraint_values["resilience_oriented"],
+                            constraint_values["soft"]
+                        )
+                    elif constraint_name == "affinity":
+                        c = AffinityConstraints(
+                            constraint_values["value"],
+                            constraint_values["energy_oriented"],
+                            constraint_values["resilience_oriented"],
+                            constraint_values["soft"]
+                        )
+                    else: # antiaffinity
+                        c = AntiAffinityConstraints(
+                            constraint_values["value"],
+                            constraint_values["energy_oriented"],
+                            constraint_values["resilience_oriented"],
+                            constraint_values["soft"]
+                        )
+                    constraints.append(c)
 
             constraint_flavours.append(FlavourConstraints(flav_name, constraints))
 
