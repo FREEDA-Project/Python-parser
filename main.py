@@ -6,7 +6,7 @@ from loader import load_application, load_infrastructure, load_resources, load_c
 from src.data.resources import default_resources
 from src.language.intermediate_language import IntermediateStructure
 from src.translators.minizinc.dzn import DZNTranslator
-from src.translators.minizinc.mzn import MZNSecondPhaseTranslator
+from src.translators.minizinc.mzn import MZNFirstPhaseTranslator, MZNSecondPhaseTranslator
 from src.translators.minizinc.unroll import MZNUnrollTranslator, MZNUnrollSecondPhaseTranslator
 from src.translators.zephyrus import ZephyrusTranslator
 
@@ -44,11 +44,16 @@ def main(
         old_deployment
     )
 
-    if format == "minizinc":
+    if format == "mzn":
+        if first_deployment:
+            translated = MZNFirstPhaseTranslator(intermediate_structure).translate()
+        else:
+            translated = MZNSecondPhaseTranslator(intermediate_structure).translate()
+    elif format == "dzn":
         if first_deployment:
             translated = DZNTranslator(intermediate_structure).translate()
         else:
-            translated = MZNSecondPhaseTranslator(intermediate_structure).translate()
+            raise Exception("Invalid output format")
     elif format == "mof": # Experimental: expenct bugs in the model
         if first_deployment:
             translated = MZNUnrollTranslator(intermediate_structure).translate()
@@ -82,8 +87,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--format",
         "-f",
-        choices=["minizinc", "mof", "smt", "ampl", "zephyrus"],
-        default="minizinc",
+        choices=["mzn", "dzn", "mof", "smt", "ampl", "zephyrus"],
+        default="dzn",
         help="Output format",
     )
     parser.add_argument(

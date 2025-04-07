@@ -150,7 +150,7 @@ class MZNFirstPhaseTranslator(Translator):
         self.flav_initial = "array[Comps] of set of Flavs: Flav = ["
         self.importance_initial = "array[Comps, Flavs] of int: imp = array2d(Comps, Flavs, [\n"
         self.energy_initial = "array[CompFlavs] of int: energy = ["
-        self.energy_dependency_initial = "array[Comps, Flavs, Comps] of int: energy_dependency;"
+        self.energy_dependency_initial = "array[Comps, Flavs, Comps] of int: energy_dependency = array3d(Comps, Flavs, Comps, ["
         self.uses_initial = "array[CompFlavs, CompFlavs] of 0..1: Uses = array2d(CompFlavs, CompFlavs, ["
         self.mayUse_initial = "array[Comps, CompFlavs] of 0..1: mayUse = array2d(Comps, CompFlavs, ["
         self.cres_initial = "enum CRes = {"
