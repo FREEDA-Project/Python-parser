@@ -68,7 +68,8 @@ def create_components(data, resources: list[Resource]) -> set[Component]:
                     for u in f_data["uses"]
                 } if "uses" in f_data else {}
                 importance = f_data["importance"] if "importance" in f_data else None
-                flavours.append(Flavour(f_name, uses, importance))
+                energy = f_data["energy"]
+                flavours.append(Flavour(f_name, uses, energy, importance))
 
         # Re-order flavour based on (specified) importance
         if "importance_order" in component_data:
@@ -111,11 +112,8 @@ def create_components(data, resources: list[Resource]) -> set[Component]:
                         for f in c.flavours
                         if c.name == c_name and f.name == req_flav_name
                     ][0]
-                    if req_name == "energy":
-                        flavour_of_component.add_energy(req_data)
-                    else:
-                        resource = get_resource(resources, req_name)
-                        add_to_array(flavour_of_component, resource, req_data)
+                    resource = get_resource(resources, req_name)
+                    add_to_array(flavour_of_component, resource, req_data)
 
     return components
 
@@ -133,9 +131,7 @@ def create_dependencies(
                 to_component = [c for c in components if c.name == to_name][0]
 
                 requirements = set()
-                for req_name, req_data in flav_requirements.items():
-                    if req_name == "energy":
-                        continue
+                for req_name, req_data in flav_requirements["requirements"].items():
                     resource = get_resource(resources, req_name)
                     if isinstance(req_data, dict):
                         requirements.add(Requirement(

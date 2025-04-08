@@ -1,3 +1,5 @@
+from itertools import product
+
 from src.language.intermediate_language import IntermediateStructure
 from src.translators.translator import Translator
 from .utils import combine_comp_flav
@@ -25,7 +27,7 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
     def make_d(self, c, i, j) -> str:
         return "D[" + combine_comp_flav(c, i) + ", " + j + "]"
 
-    def make_d(self, cf, j) -> str:
+    def make_d_cf(self, cf, j) -> str:
        return "D[" + str(cf) + ", " + j + "]"
 
     def __init__(self, struct: IntermediateStructure):
@@ -148,13 +150,38 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
 
     def tot_carb(self):
         to_sum = []
-        for n in self.structure.nodes:
-            for cf in self.compflavs:
-                to_sum.append(
-                    str(self.structure.energy[cf] * self.structure.node_carb[n])
-                    + " * "
-                    + self.make_d(cf, n)
-                )
+        for c in self.structure.components:
+            for f in self.flavours[c]:
+                for n in self.structure.nodes:
+                    to_sum.append(
+                        str(self.structure.energy[(c, f)] * self.structure.node_carb[n])
+                        + " * "
+                        + self.make_d(c, f, n)
+                    )
+        for c1 in self.structure.components:
+            for f1 in self.flavours[c]:
+                for c2 in self.structure.components:
+                    for f2 in self.flavours[c]:
+                        if (
+                            (c1, f1) in self.structure.uses
+                            and (c2, f2) in self.structure.uses[(c1, f1)]
+                            and (c1, f1, c2) in self.structure.energy_dependencies
+                        ):
+                            for n1, n2 in product(self.structure.nodes, repeat=2):
+                                to_sum.append(
+                                    str(
+                                        self.structure.energy_dependencies[(c1, f1, c2)]
+                                        * round(
+                                            (
+                                                self.structure.node_carb[n1]
+                                                + self.structure.node_carb[n2]
+                                            ) / 2
+                                        )
+                                    ) + " * "
+                                    + self.make_d(c1, f1, n1)
+                                    + " * "
+                                    + self.make_d(c2, f2, n2)
+                                )
 
         return "\n\t+ ".join(to_sum)
 
@@ -165,7 +192,7 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
         ]
 
         for i in self.compflavs:
-            result.append(self.make_d(i, self.zero_node) + " = 0")
+            result.append(self.make_d_cf(i, self.zero_node) + " = 0")
 
         return result
 

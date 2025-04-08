@@ -46,17 +46,17 @@ var int: totCost = sum(c in Comps, i in Flav[c], r in Req_cf[Idx(c, i)])(
 );
 
 var int: totCarb = sum(
-    n in Nodes0,
     c in Comps,
-    i in Flav[c],
+    i in Flav[c]
 )(
-    energy[Idx(c, i)] * carb[n] * D[Idx(c, i), n]
+    energy[Idx(c, i)] * carb[node[c]] * D[Idx(c, i), node[c]]
 ) + sum(
-    cs in Comps,
-    is in Flav[cs],
-    cd in Comps where mayUse[cd, Idx(cs, is)] = 1
+  cs in Comps,
+  is in Flav[cs],
+  cd in Comps,
+  id in Flav[cd] where Uses[Idx(cs, is), Idx(cd, id)] = 1
 )(
-    energy_dependency[cs, is, cd] * round((carb[node[cs]] + carb[node[cd]]) / 2)
+  energy_dependency[cs, is, cd] * round((carb[node[cs]] + carb[node[cd]]) / 2) * D[Idx(cs, is), node[cs]] * D[Idx(cd, id), node[cd]]
 );
 
 constraint forall(j in Nodes0)(D[0, j] = 0);

@@ -25,19 +25,17 @@ class Flavour:
         self,
         name: str,
         uses: set[tuple[str, str]],
+        energy: int,
         importance: int = None
     ):
         self.name = str(name)
         self.uses = uses
-        self.energy = None
+        self.energy = energy
         self.requirements = list()
         self.importance = importance
 
     def add_requirement(self, requirement: Requirement):
         self.requirements.append(requirement)
-
-    def add_energy(self, energy: int):
-        self.energy = energy
 
 class Component:
     def __init__(
