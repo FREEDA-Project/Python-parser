@@ -150,38 +150,43 @@ class MZNUnrollTranslator(Translator): # MZN optimized with unroll format
 
     def tot_carb(self):
         to_sum = []
-        for c in self.structure.components:
-            for f in self.flavours[c]:
-                for n in self.structure.nodes:
-                    to_sum.append(
-                        str(self.structure.energy[(c, f)] * self.structure.node_carb[n])
-                        + " * "
-                        + self.make_d(c, f, n)
-                    )
-        for c1 in self.structure.components:
-            for f1 in self.flavours[c]:
-                for c2 in self.structure.components:
-                    for f2 in self.flavours[c]:
-                        if (
-                            (c1, f1) in self.structure.uses
-                            and (c2, f2) in self.structure.uses[(c1, f1)]
-                            and (c1, f1, c2) in self.structure.energy_dependencies
-                        ):
-                            for n1, n2 in product(self.structure.nodes, repeat=2):
-                                to_sum.append(
-                                    str(
-                                        self.structure.energy_dependencies[(c1, f1, c2)]
+        for cs in self.structure.components:
+            for fs in self.flavours[cs]:
+                for js in self.structure.nodes:
+                    to_sum_internal = []
+                    for cd in self.structure.components:
+                        for fd in self.flavours[cd]:
+                            for jd in self.structure.nodes:
+                                comb = combine_comp_flav(cs, fs)
+                                if (
+                                    (cd, comb) in self.mayUse
+                                    and self.mayUse[(cd, comb)] == 1
+                                    and (cs, fs, cd) in self.structure.energy_dependencies
+                                ):
+                                    to_sum_internal.append(str(
+                                        self.structure.energy_dependencies[(cs, fs, cd)]
                                         * round(
                                             (
-                                                self.structure.node_carb[n1]
-                                                + self.structure.node_carb[n2]
+                                                self.structure.node_carb[js]
+                                                + self.structure.node_carb[jd]
                                             ) / 2
                                         )
-                                    ) + " * "
-                                    + self.make_d(c1, f1, n1)
-                                    + " * "
-                                    + self.make_d(c2, f2, n2)
-                                )
+                                    ) + " * " + self.make_d(cd, fd, jd))
+
+                    if len(to_sum_internal) > 0:
+                        partial = (
+                            self.make_d(cs, fs, js) + " * (\n\t\t"
+                            + str(self.structure.energy[(cs, fs)] * self.structure.node_carb[js])
+                            + "\n\t\t+ " + "\n\t\t+ ".join(to_sum_internal)
+                            + ")"
+                        )
+                    else:
+                        partial = (
+                            str(self.structure.energy[(cs, fs)] * self.structure.node_carb[js])
+                            + " * "
+                            + self.make_d(cs, fs, js)
+                        )
+                    to_sum.append(partial)
 
         return "\n\t+ ".join(to_sum)
 

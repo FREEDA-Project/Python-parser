@@ -45,18 +45,16 @@ var int: totCost = sum(c in Comps, i in Flav[c], r in Req_cf[Idx(c, i)])(
     comReq[Idx(c, i), r] * cost[node[c], r] * D[Idx(c, i), node[c]]
 );
 
-var int: totCarb = sum(
-    c in Comps,
-    i in Flav[c]
-)(
-    energy[Idx(c, i)] * carb[node[c]] * D[Idx(c, i), node[c]]
-) + sum(
-  cs in Comps,
-  is in Flav[cs],
-  cd in Comps,
-  id in Flav[cd] where Uses[Idx(cs, is), Idx(cd, id)] = 1
-)(
-  energy_dependency[cs, is, cd] * round((carb[node[cs]] + carb[node[cd]]) / 2) * D[Idx(cs, is), node[cs]] * D[Idx(cd, id), node[cd]]
+var int: totCarb = sum(cs in Comps, is in Flav[cs], js in Nodes)(
+  D[Idx(cs, is), js] * (
+    energy[Idx(cs, is)] * carb[js] + sum(
+      cd in Comps,
+      id in Flav[cd] where mayUse[cd, Idx(cs, is)] = 1 /\ energy_dependency[cs, is, cd] > 0,
+      jd in Nodes
+    )(
+      D[Idx(cd, id), jd] * energy_dependency[cs, is, cd] * round((carb[js] + carb[jd]) / 2)
+    )
+  )
 );
 
 constraint forall(j in Nodes0)(D[0, j] = 0);
@@ -165,7 +163,7 @@ class MZNFirstPhaseTranslator(Translator):
         self.depReq_initiale = "array[Comps, Flavs, Comps, Res] of int: depReq = array4d(Comps, Flavs, Comps, Res, [\n"
         self.linkCap_initial = "array[Nodes0, Nodes0, Res] of int: linkCap = array3d(Nodes0, Nodes0, Res, [\n"
         self.cost_initial = "array[Nodes0, Res] of int: cost = array2d(Nodes0, Res, [0 | r in Res] ++ [ % No node\n"
-        self.carb_initial = "array[Nodes0] of int: carb = array1d(Nodes0, [0] ++ [ % No node\n"
+        self.carb_initial = "array[Nodes0] of int: carb = array1d(Nodes0, [0] ++ [ % No node\n\t"
         self.costbudget_initial = "int: costBudget = "
         self.carbbudget_initial = "int: carbBudget = "
 
