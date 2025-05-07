@@ -125,17 +125,6 @@ constraint forall(
 
 constraint totCost <= costBudget;
 constraint totCarb <= carbBudget;
-
-output [
-    if fix(node[c]) > 0 then
-        "Component \(c) deployed in flavour \([Flavs[i] | i in Flav[c] where D[Idx(c, i), node[c]] > 0][1]) on node \(Nodes[node[c]]).\\n"
-    else
-        "Component \(c) not deployed.\\n"
-    endif
-    | c in Comps
-] ++ [
-    "Objective value: \(obj)\\n\\tTotal cost: \(totCost)\\n\\tTotal carb: \(totCarb)"
-];
 """
 
 class MZNFirstPhaseTranslator(Translator):
@@ -172,6 +161,19 @@ class MZNFirstPhaseTranslator(Translator):
             "\timp[c,i] * sum([D[Idx(c,i),j] | j in Nodes])",
             ");\nsolve maximize obj;"
         ]
+
+        self.model_output = """
+output [
+    if fix(node[c]) > 0 then
+        "Component \(c) deployed in flavour \([Flavs[i] | i in Flav[c] where D[Idx(c, i), node[c]] > 0][1]) on node \(Nodes[node[c]]).\\n"
+    else
+        "Component \(c) not deployed.\\n"
+    endif
+    | c in Comps
+] ++ [
+    "Objective value: \(obj)\\n\\tApp quality: \(obj)\\n\\tTotal cost: \(totCost)\\n\\tTotal carb: \(totCarb)"
+];
+"""
 
         flavs_order = {e : i for i, e in enumerate(self.structure.flavs)}
 
@@ -236,6 +238,7 @@ class MZNFirstPhaseTranslator(Translator):
         self.output.append(self.carbbudget_initial + str(self.structure.carbon_budget) + ";")
 
         self.output.extend(self.obj)
+        self.output.append(self.model_output)
 
         return self
 
@@ -447,6 +450,21 @@ class MZNSecondPhaseTranslator(MZNFirstPhaseTranslator):
             "\tD[Idx(c, i), j]",
             ");\n\nsolve maximize obj;"
         ]
+        self.model_output = """
+var int: app_quality = sum(c in Comps, i in Flav[c])(
+    imp[c,i] * sum([D[Idx(c,i),j] | j in Nodes])
+);
+output [
+    if fix(node[c]) > 0 then
+        "Component \(c) deployed in flavour \([Flavs[i] | i in Flav[c] where D[Idx(c, i), node[c]] > 0][1]) on node \(Nodes[node[c]]).\\n"
+    else
+        "Component \(c) not deployed.\\n"
+    endif
+    | c in Comps
+] ++ [
+    "Objective value: \(obj)\\n\\tApp quality: \(app_quality)\\n\\tTotal cost: \(totCost)\\n\\tTotal carb: \(totCarb)"
+];
+"""
 
     def translate(self):
         super().translate()
