@@ -25,7 +25,7 @@ def main(
         priority
     )
 
-    translated_minizinc = DZNTranslator(intermediate_structure).to_string()
+    translated_minizinc = DZNTranslator(intermediate_structure).translate().to_string()
     translated_zephyrus = ZephyrusTranslator(intermediate_structure).to_string()
 
     return translated_minizinc, translated_zephyrus
