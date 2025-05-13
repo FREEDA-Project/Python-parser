@@ -3,7 +3,7 @@
 from loader import load_application, load_infrastructure, load_resources
 from src.data.resources import default_resources
 from src.language.intermediate_language import IntermediateStructure
-from src.translators.minizinc import MiniZincTranslator
+from src.translators.minizinc.dzn import DZNTranslator
 from src.translators.zephyrus import ZephyrusTranslator
 
 def main(
@@ -25,7 +25,7 @@ def main(
         priority
     )
 
-    translated_minizinc = MiniZincTranslator(intermediate_structure).to_string()
+    translated_minizinc = DZNTranslator(intermediate_structure).to_string()
     translated_zephyrus = ZephyrusTranslator(intermediate_structure).to_string()
 
     return translated_minizinc, translated_zephyrus
