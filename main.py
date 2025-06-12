@@ -17,7 +17,8 @@ def main(
     priority,
     additional_resources_data=None,
     constraints=None,
-    old_deployment=None
+    old_deployment=None,
+    dump_importances_path=None
 ):
     first_deployment = True
 
@@ -43,6 +44,21 @@ def main(
         constraints,
         old_deployment
     )
+
+    if dump_importances_path is not None:
+        importances = {}
+        for (c, f), i in intermediate_structure.importance.items():
+            if c not in importances:
+                importances[c] = {}
+                importances[c][f] = i
+
+            if f not in importances[c]:
+                importances[c][f] = i
+
+            importances[c][f] = i
+
+        with open(dump_importances_path, 'w') as f:
+            yaml.dump(importances, f)
 
     if format == "mzn":
         if first_deployment:
@@ -105,6 +121,12 @@ if __name__ == "__main__":
         type=str,
         help="Resources YAML file path"
     )
+    parser.add_argument(
+        "--dump-importances",
+        metavar="location",
+        type=str,
+        help="Location where to dump flavour importance YAML file"
+    )
     args = parser.parse_args()
 
     with open(args.infrastructure, "r") as yaml_file:
@@ -135,7 +157,8 @@ if __name__ == "__main__":
         args.flavour_priority,
         additional_resources_data,
         constraints,
-        old_deployment
+        old_deployment,
+        args.dump_importances
     )
 
     print(result)
